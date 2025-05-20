@@ -1,0 +1,11 @@
+{
+    "ansible.executionEnvironment.enabled": true,
+    "auto-close-tag.fullMode": true,
+    "basedpyright.analysis.diagnosticMode": "workspace",
+    "git.autofetch": "all",
+    "git.autoStash": true,
+    "git.enableCommitSigning": true,
+    "git.enableSmartCommit": false,
+    "git.rebaseWhenSync": true,
+    "gitlens.detectNestedRepositories": true
+}
