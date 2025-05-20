@@ -1,12 +1,79 @@
 <<<<<<< HEAD
-# Miscellaneous
-*.class
-*.lock
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+*.venv
+*.pytest_cache/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Database
+*.sqlite3
+*.db
+*.sql
+*.dump
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
 *.log
+logs/
+
+# Test coverage
+htmlcov/
+.coverage
+.coverage.*
+.coverage.*.c
+.coverage.*.json
+.coverage.xml
+.nox/
+
+# Misc
+.DS_Store
+*.pem
+
+# Project specific
+*.lock
 *.pyc
 *.swp
 .buildlog/
 .history
+
+# Docker
+.docker/
+.dockerignore
+Dockerfile
+
+# Service files
+*.service
+*.sh
+
+# API and database setup files
+setup-api.sh
+setup-postgres.sh
+setup-vectordb.sh
+
+# Test files
+test_setup.sh
+
+# Requirements files
+requirements-vectordb.txt
 
 
 

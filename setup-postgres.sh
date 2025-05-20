@@ -5,7 +5,7 @@ sudo apt-get update
 sudo apt-get install -y postgresql postgresql-contrib
 
 # Create document repository database and user
-sudo -u postgres psql -c "CREATE DATABASE doc_repo;"
+sudo -u postgres psql -c "CREATE DATABASE opendiscourse;"
 sudo -u postgres psql -c "CREATE USER doc_user WITH PASSWORD 'doc_password123';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE doc_repo TO doc_user;"
 
