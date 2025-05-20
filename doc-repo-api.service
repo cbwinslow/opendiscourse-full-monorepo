@@ -1,0 +1,12 @@
+[Unit]
+Description=Document Repository API Service
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/home/cbwinslow/CascadeProjects/windsurf-project
+ExecStart=/usr/bin/python3 doc-repo-api.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
