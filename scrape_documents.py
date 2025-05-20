@@ -6,8 +6,11 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime
 import logging
+import time
+from functools import wraps
 
 # Set up logging
+logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -31,23 +34,48 @@ def get_db_connection():
 
 def scrape_government_db():
     """Scrape documents from the government database."""
-    base_url = "https://www.govt.example.com/documents"  # Replace with actual URL
+    base_url = f"https://api.govinfo.gov/v1/packages?collectionCode=BILLS&offset=0&pageSize=10&api_key={os.getenv('GOVINFO_API_KEY')}"  # Using packages endpoint with smaller page size  # Using packages endpoint with proper parameters  # Using bulkdata endpoint with proper parameters  # Using bulkdata endpoint for BILLS collection  # BILLS collection endpoint
+    headers = {
+        'Accept': 'application/json',
+        'User-Agent': 'OpenDiscourse/1.0',
+        'X-Api-Key': os.getenv('GOVINFO_API_KEY')
+    }
     
     try:
-        # Get the main documents page
-        response = requests.get(base_url)
+        # Get the packages list
+        response = requests.get(base_url, headers=headers)
         response.raise_for_status()
         
-        # Parse the HTML
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Find all document links
-        document_links = soup.find_all('a', class_='document-link')
+        # Parse the JSON response
+        data = response.json()
         
         # Process each document
-        for link in document_links:
-            doc_url = link.get('href')
-            if not doc_url:
+        for package in data.get('packages', []):
+            doc_id = package.get('packageId')
+            if not doc_id:
+                continue
+            
+            # Get the document details
+            doc_url = f"https://api.govinfo.gov/v1/packages/{doc_id}/content?api_key={os.getenv('GOVINFO_API_KEY')}"
+            try:
+                doc_response = requests.get(doc_url, headers=headers, timeout=10)
+                doc_response.raise_for_status()
+                doc_response.raise_for_status()
+                
+                # Save the document
+                save_document(
+                    title=package.get('title', ''),
+                    content=doc_response.text,
+                    metadata={
+                        'package_id': doc_id,
+                        'collection': package.get('collectionCode'),
+                        'date': package.get('granuleDate'),
+                        'type': package.get('documentType')
+                    }
+                )
+                logging.info(f"Successfully saved document {doc_id}")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Attempt failed for {doc_url}: {str(e)}")
                 continue
                 
             try:
