@@ -3,11 +3,13 @@ from bs4 import BeautifulSoup
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
-from dotenv import load_dotenv
-from datetime import datetime
 import logging
+from datetime import datetime
 import time
 from functools import wraps
+import json
+import traceback
+from dotenv import load_dotenv
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -79,29 +81,30 @@ def scrape_government_db():
                 continue
                 
             try:
-                # Get document details
-                doc_response = requests.get(doc_url)
-                doc_response.raise_for_status()
+                # Download document with timeout
+                response = requests.get(doc_url, timeout=30)  # 30 second timeout
+                response.raise_for_status()
+                content = response.text
                 
-                # Parse document page
-                doc_soup = BeautifulSoup(doc_response.text, 'html.parser')
-                title = doc_soup.find('h1').text.strip()
-                content = doc_soup.find('div', class_='document-content').text.strip()
+                # Parse document
+                soup = BeautifulSoup(content, 'html.parser')
+                title = soup.title.string if soup.title else "Untitled Document"
                 
                 # Get metadata
                 metadata = {
-                    'source': 'government_database',
                     'url': doc_url,
-                    'scraped_at': datetime.now().isoformat()
+                    'title': title,
+                    'source': 'govinfo',
+                    'processed_at': datetime.now().isoformat()
                 }
                 
-                # Save to database
+                # Save document
                 save_document(title, content, metadata)
                 
-                logging.info(f"Successfully processed document: {title}")
-                
+                logging.info("Successfully processed document: %s", title)
             except Exception as e:
-                logging.error(f"Error processing document {doc_url}: {str(e)}")
+                logging.error("Error processing document: %s", str(e))
+                logging.error("Traceback: %s", traceback.format_exc())
                 
     except Exception as e:
         logging.error(f"Error scraping government database: {str(e)}")

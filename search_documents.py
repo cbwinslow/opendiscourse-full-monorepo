@@ -1,9 +1,19 @@
 import pinecone
 import os
 from dotenv import load_dotenv
+import traceback
+import pinecone
 from langchain.embeddings import OpenAIEmbeddings
+from typing import List, Dict, Any
+import logging
 
-def search(query, top_k=5):
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+def search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
     """Search for documents similar to the given query.
     
     Args:
@@ -13,44 +23,49 @@ def search(query, top_k=5):
     Returns:
         list: List of search results with scores and metadata
     """
-    # Load environment variables
-    load_dotenv()
-    
-    # Initialize Pinecone
-    pinecone.init(
-        api_key=os.getenv('PINECONE_API_KEY'),
-        environment=os.getenv('PINECONE_ENVIRONMENT')
-    )
-    
-    # Initialize OpenAI embeddings
-    embeddings = OpenAIEmbeddings(
-        openai_api_key=os.getenv('OPENAI_API_KEY')
-    )
-    
-    # Get the Pinecone index
-    index = pinecone.Index("opendiscourse-docs")
-    
-    # Get query embedding
-    query_embedding = embeddings.embed_query(query)
-    
-    # Search for similar documents
-    results = index.query(
-        vector=query_embedding,
-        top_k=top_k,
-        include_metadata=True
-    )
-    
-    # Format results
-    formatted_results = []
-    for match in results.matches:
-        formatted_results.append({
-            'score': match.score,
-            'title': match.metadata.get('title', ''),
-            'content': match.metadata.get('content', ''),
-            'document_id': match.metadata.get('document_id', '')
-        })
-    
-    return formatted_results
+    try:
+        # Load environment variables
+        load_dotenv()
+        
+        # Initialize Pinecone
+        pinecone.init(
+            api_key=os.getenv('PINECONE_API_KEY'),
+            environment=os.getenv('PINECONE_ENVIRONMENT')
+        )
+        
+        # Initialize OpenAI embeddings
+        embeddings = OpenAIEmbeddings(
+            openai_api_key=os.getenv('OPENAI_API_KEY')
+        )
+        
+        # Get the Pinecone index
+        index = pinecone.Index("opendiscourse-docs")
+        
+        # Get query embedding
+        query_embedding = embeddings.embed_query(query)
+        
+        # Search for similar documents
+        results = index.query(
+            vector=query_embedding,
+            top_k=top_k,
+            include_metadata=True
+        )
+        
+        # Format results
+        formatted_results = []
+        for match in results.matches:
+            formatted_results.append({
+                'score': match.score,
+                'title': match.metadata.get('title', ''),
+                'content': match.metadata.get('content', ''),
+                'document_id': match.metadata.get('document_id', '')
+            })
+        
+        return formatted_results
+    except Exception as e:
+        logging.error("Error searching documents: %s", str(e))
+        logging.error("Traceback: %s", traceback.format_exc())
+        return []
 
 if __name__ == "__main__":
     # Example usage

@@ -1,12 +1,18 @@
 import sys
 sys.path.append('/home/cbwinslow/CascadeProjects/opendiscourse')
 
+import logging
 from entity_extractor import extract_entities, save_entity, save_entity_relationship, save_entity_mention
-from datetime import datetime
-import os
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 # Read test document
-test_content = open('test_document.txt').read()
+with open('test_document.txt', 'r', encoding='utf-8') as f:
+    test_content = f.read()
 
 # Extract entities
 entities = extract_entities(test_content)
@@ -19,7 +25,7 @@ for entity in entities:
 for entity in entities:
     entity_id = save_entity(entity)
     if entity_id is not None:
-        print(f"Saved entity: {entity['text']} with ID: {entity_id}")
+        logging.info("Saved entity: %s with ID: %s", entity['text'], entity_id)
 
 print("\nEntity Relationships:")
 # Infer relationships
@@ -28,7 +34,7 @@ for i, entity in enumerate(entities):
         other_entity = entities[j]
         # Check for membership relationships
         if entity['type'] == 'GOVERNMENT_BODY' and other_entity['type'] == 'PERSON':
-            print(f"- {other_entity['text']} is a member of {entity['text']}")
+            logging.info("- %s is a member of %s", other_entity['text'], entity['text'])
             entity_id = save_entity(entity)
             other_entity_id = save_entity(other_entity)
             if entity_id is not None and other_entity_id is not None:
