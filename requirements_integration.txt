@@ -1,0 +1,5 @@
+PyYAML==6.0.1
+requests==2.31.0
+python-jira==3.4.0
+PyGithub==2.1.5
+bitbucket-api==0.1.1
