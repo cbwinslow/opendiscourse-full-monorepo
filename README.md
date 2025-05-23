@@ -1,54 +1,52 @@
-# Comprehensive News Aggregator Platform
+# OpenDiscourse - Government Document Analysis Platform
 
-A sophisticated news aggregation and analysis platform that combines multiple news sources, social media, TV streams, and financial data with advanced AI capabilities for content analysis and fact-checking.
+A platform for analyzing and processing government documents using advanced NLP and entity extraction techniques.
 
 ## Features
 
-- Multi-source news aggregation
-- Social media integration (Twitter)
-- TV stream transcription and analysis
-- Financial news integration
-- Advanced NLP and NLG capabilities
-- Bias detection and analysis
-- Fact-checking system
-- User profiles and authentication
-- AI-powered content analysis
-- Document processing and RAG
-- Library of Congress integration
+- Entity extraction from government documents
+- Relationship inference between entities
+- Document processing and analysis
+- Vector database integration for semantic search
+- PostgreSQL database for structured data storage
+- API endpoints for document processing
 
 ## Tech Stack
 
-- Backend: Node.js with Express
+- Backend: Python with Flask
 - Database: PostgreSQL
-- AI/ML: Various LLMs and NLP models
-- Frontend: Modern JavaScript framework
-- Authentication: OAuth2/JWT
-- Real-time processing: WebSocket/Socket.io
-- Caching: Redis
-- Queue System: RabbitMQ
+- AI/ML: Transformers and OpenAI models
+- Vector Database: Pinecone
+- Document Processing: BeautifulSoup and Requests
+- Logging: Python logging module
 
 ## Project Structure
 
 ```
-src/
-├── api/              # API routes and controllers
-├── auth/             # Authentication system
-├── database/         # Database models and migrations
-├── jobs/             # Background job processing
+.
+├── api/              # API endpoints
+├── processors/       # Document processing components
 ├── services/         # External service integrations
-├── ai/               # AI/ML components
-├── models/           # Data models and schemas
+├── models/           # Data models
 ├── utils/            # Utility functions
-└── config/           # Configuration files
+├── config/           # Configuration files
+└── tests/           # Test files
 ```
 
 ## Getting Started
 
 1. Clone the repository
-2. Install dependencies: `npm install`
-3. Set up environment variables
-4. Run database migrations
-5. Start the development server
+2. Create a virtual environment: `python -m venv venv`
+3. Activate the virtual environment:
+   - Linux/Mac: `source venv/bin/activate`
+   - Windows: `venv\Scripts\activate`
+4. Install dependencies: `pip install -r requirements.txt`
+5. Set up environment variables (see below)
+6. Run database migrations: `python setup-postgres.sh`
+7. Start the services:
+   - API: `python opendiscourse-api.py`
+   - Document processor: `python govinfo_document_processor.py`
+   - Scraper: `python govinfo_scraper.py`
 
 ## Environment Variables
 
@@ -56,19 +54,22 @@ src/
 # Database
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=news_aggregator
+DB_NAME=opendiscourse
 DB_USER=postgres
 DB_PASSWORD=your_password
 
-# Authentication
-JWT_SECRET=your_jwt_secret
-
-# External Services
-TWITTER_API_KEY=your_twitter_api_key
-BLOOMBERG_API_KEY=your_bloomberg_api_key
+# Vector Database
+PINECONE_API_KEY=your_pinecone_api_key
+PINECONE_ENVIRONMENT=your_pinecone_environment
 
 # AI/ML
 OPENAI_API_KEY=your_openai_api_key
+
+# Document Processing
+DOWNLOAD_DIR=/path/to/download/directory
+PROCESSING_DIR=/path/to/processing/directory
+COMPLETED_DIR=/path/to/completed/directory
+ERROR_DIR=/path/to/error/directory
 ```
 
 ## License
