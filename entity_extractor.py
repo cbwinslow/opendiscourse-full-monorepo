@@ -7,9 +7,13 @@ from datetime import datetime
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 from collections import defaultdict
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForTokenClassification
 import torch
 import re
+from typing import Dict, List, Optional, Tuple, Any, Set
+from collections import defaultdict
+from vector_database import VectorDatabase
+import numpy as np
 
 # Set up logging
 logging.basicConfig(
@@ -25,7 +29,11 @@ logging.basicConfig(
 load_dotenv()
 
 # Initialize transformers pipeline
-entity_recognizer = pipeline("ner", model="dslim/bert-base-NER", device=0 if torch.cuda.is_available() else -1)
+tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
+model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
+
+# Initialize vector database
+vector_db = VectorDatabase()
 
 # Define entity patterns
 ENTITY_PATTERNS = {
@@ -68,36 +76,109 @@ def get_db_connection():
         port='5432'
     )
 
-def extract_entities(text: str) -> List[Dict[str, Any]]:
+def extract_entities(text: str, document_id: int) -> List[Dict[str, Any]]:
     """Extract entities from text using transformers and custom patterns."""
     # Process with transformers
-    transformer_entities = entity_recognizer(text)
+    inputs = tokenizer(text, return_tensors="pt")
+    outputs = model(**inputs)
+    
+    # Convert logits to probabilities
+    probabilities = torch.softmax(outputs.logits, dim=-1)
+    
+    # Get the predicted labels
+    predictions = torch.argmax(probabilities, dim=-1)
+    
+    # Convert token IDs to tokens
+    tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
+    
+    # Get the predicted labels
+    predicted_labels = [model.config.id2label[p.item()] for p in predictions[0]]
+    
+    transformer_entities = []
+    current_entity = None
+    current_entity_text = ""
+    
+    for token, label in zip(tokens, predicted_labels):
+        if label != "O":  # O means no entity
+            if current_entity is None:
+                current_entity = label
+                current_entity_text = token
+            elif label == current_entity:
+                current_entity_text += " " + token
+            else:
+                transformer_entities.append({
+                    "entity": current_entity_text,
+                    "start": text.find(current_entity_text),
+                    "end": text.find(current_entity_text) + len(current_entity_text),
+                    "score": float(probabilities[0][text.find(current_entity_text)].max().item()),
+                    "label": current_entity
+                })
+                current_entity = label
+                current_entity_text = token
+    
+    if current_entity is not None:
+        transformer_entities.append({
+            "entity": current_entity_text,
+            "start": text.find(current_entity_text),
+            "end": text.find(current_entity_text) + len(current_entity_text),
+            "score": float(probabilities[0][text.find(current_entity_text)].max().item()),
+            "label": current_entity
+        })
     
     # Convert transformer entities to our format
     entities = []
+    seen_entities: Set[str] = set()
     
     # Get transformer entities
     for ent in transformer_entities:
         if ent['entity'] in ENTITY_TYPE_MAP:
-            entities.append({
-                'text': ent['word'],
-                'type': ENTITY_TYPE_MAP[ent['entity']],
-                'start': ent['start'],
-                'end': ent['end'],
-                'confidence': ent['score']
-            })
+            entity_text = ent['word']
+            if entity_text not in seen_entities:
+                seen_entities.add(entity_text)
+                entities.append({
+                    'text': entity_text,
+                    'type': ENTITY_TYPE_MAP[ent['entity']],
+                    'start': ent['start'],
+                    'end': ent['end'],
+                    'confidence': ent['score']
+                })
+                
+                # Check if this is a new entity
+                try:
+                    # Get similar entities from vector database
+                    similar_entities = vector_db.search_similar(entity_text, k=3)
+                    
+                    # If no similar entities found, add this as new
+                    if not similar_entities:
+                        # Create embedding for new entity
+                        embedding = vector_db.embeddings.embed_query(entity_text)
+                        vector_db.vector_store.add_texts(
+                            texts=[entity_text],
+                            metadatas=[{
+                                'entity_type': ENTITY_TYPE_MAP[ent['entity']],
+                                'source_document': document_id,
+                                'confidence': ent['score']
+                            }],
+                            embeddings=[embedding]
+                        )
+                        vector_db.persist()
+                except Exception as e:
+                    logging.error(f"Error processing new entity {entity_text}: {str(e)}")
     
     # Apply custom patterns
     for entity_type, patterns in ENTITY_PATTERNS.items():
         for pattern in patterns:
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                entities.append({
-                    'text': match.group(),
-                    'type': entity_type,
-                    'start': match.start(),
-                    'end': match.end(),
-                    'confidence': 0.8  # Custom pattern confidence
-                })
+                entity_text = match.group()
+                if entity_text not in seen_entities:
+                    seen_entities.add(entity_text)
+                    entities.append({
+                        'text': entity_text,
+                        'type': entity_type,
+                        'start': match.start(),
+                        'end': match.end(),
+                        'confidence': 0.8  # Custom pattern confidence
+                    })
     
     return entities
 
@@ -285,44 +366,36 @@ def save_declaration(declaration: Dict[str, Any], document_id: int) -> None:
         cursor.close()
         conn.close()
 
-def process_document(document_id: int, content: str):
+def process_document(document_id: int, content: str, metadata: Dict[str, str]) -> None:
     """Process a document for entity extraction."""
     try:
-        # Extract entities
-        entities = extract_entities(content)
-        entities = deduplicate_entities(entities)
+        # Extract entities with continuous discovery
+        entities = extract_entities(content, document_id)
         
-        # Save entities and mentions
-        for entity in entities:
-            entity_id = save_entity(entity)
-            if entity_id is not None:
-                # Update the entity with its ID before saving mentions
-                entity['entity_id'] = entity_id
-                save_entity_mention(entity, document_id, entity_id)
+        # Deduplicate entities
+        entities = deduplicate_entities(entities)
         
         # Infer relationships
         relationships = infer_relationships(entities, content)
-        for relationship in relationships:
-            # Get entity IDs for the relationship
-            entity_id = next((e['entity_id'] for e in entities if e['text'].lower() == relationship['entity_text'].lower()), None)
-            related_entity_id = next((e['entity_id'] for e in entities if e['text'].lower() == relationship['related_entity_text'].lower()), None)
-            
-            if entity_id is not None and related_entity_id is not None:
-                relationship['entity_id'] = entity_id
-                relationship['related_entity_id'] = related_entity_id
-                save_entity_relationship(relationship)
         
         # Extract declarations
         declarations = extract_declarations(entities, content)
+        
+        # Save to vector database
+        vector_db.add_document(document_id, content, metadata)
+        
+        # Save entities and relationships
+        for entity in entities:
+            entity_id = save_entity(entity)
+            if entity_id:
+                save_entity_mention(entity, document_id, entity_id)
+        
+        for relationship in relationships:
+            save_entity_relationship(relationship)
+        
         for declaration in declarations:
-            # Get entity ID for the declaration
-            entity_id = next((e['entity_id'] for e in entities if e['text'].lower() == declaration['entity_text'].lower()), None)
-            if entity_id is not None:
-                declaration['entity_id'] = entity_id
-                save_declaration(declaration, document_id)
-        
-        logging.info(f"Processed document {document_id} for entities")
-        
+            save_declaration(declaration, document_id)
+            
     except Exception as e:
         logging.error(f"Error processing document {document_id}: {str(e)}")
 

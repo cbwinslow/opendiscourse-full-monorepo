@@ -1,18 +1,68 @@
 import requests
 from bs4 import BeautifulSoup
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import os
+from typing import Dict, Any, Optional, List, TypeVar, Generic, Type, Union
 import logging
 from datetime import datetime
-import time
-from functools import wraps
-import json
-import traceback
+import os
+import psycopg2
+from psycopg2 import Error, connect
 from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
+import time
+from typing_extensions import TypedDict
+
+# Type definitions for better type hints
+class PackageMetadata(TypedDict):
+    packageId: str
+    collectionCode: Optional[str]
+    granuleDate: Optional[str]
+    documentType: Optional[str]
+
+class DocumentMetadata(TypedDict):
+    title: str
+    source_url: str
+    source_id: str
+    source_type: str
+    source_date: str
+    source_collection: str
+    created_at: datetime
+    document_type: Optional[str]
+    type: Optional[str]
+
+T = TypeVar('T')
+
+def create_retry_session() -> requests.Session:
+    """Create a session with retry logic for API requests."""
+    retry = Retry(
+        total=5,  # Increased retry attempts
+        backoff_factor=2,  # Exponential backoff
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=['GET', 'POST'],  # Allow retries for both GET and POST
+        raise_on_status=False  # Don't raise immediately on 5xx errors
+    )
+    
+    adapter = HTTPAdapter(
+        max_retries=retry,
+        pool_connections=10,  # Connection pool size
+        pool_maxsize=10
+    )
+    
+    session = requests.Session()
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    
+    # Add headers
+    session.headers.update({
+        'Accept': 'application/json',
+        'X-Api-Key': os.getenv('GOVINFO_API_KEY', '')
+    })
+    
+    return session
 
 # Set up logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -25,120 +75,244 @@ logging.basicConfig(
 # Load environment variables
 load_dotenv()
 
-def get_db_connection():
-    """Get a database connection."""
-    return psycopg2.connect(
-        dbname="opendiscourse",
-        user="doc_user",
-        password="doc_password123",
-        host="localhost"
-    )
-
-def scrape_government_db():
-    """Scrape documents from the government database."""
-    base_url = f"https://api.govinfo.gov/v1/packages?collectionCode=BILLS&offset=0&pageSize=10&api_key={os.getenv('GOVINFO_API_KEY')}"  # Using packages endpoint with smaller page size  # Using packages endpoint with proper parameters  # Using bulkdata endpoint with proper parameters  # Using bulkdata endpoint for BILLS collection  # BILLS collection endpoint
-    headers = {
-        'Accept': 'application/json',
-        'User-Agent': 'OpenDiscourse/1.0',
-        'X-Api-Key': os.getenv('GOVINFO_API_KEY')
-    }
+class DatabaseConnection:
+    """Context manager for database connections."""
     
-    try:
-        # Get the packages list
-        response = requests.get(base_url, headers=headers)
-        response.raise_for_status()
-        
-        # Parse the JSON response
-        data = response.json()
-        
-        # Process each document
-        for package in data.get('packages', []):
-            doc_id = package.get('packageId')
-            if not doc_id:
-                continue
-            
-            # Get the document details
-            doc_url = f"https://api.govinfo.gov/v1/packages/{doc_id}/content?api_key={os.getenv('GOVINFO_API_KEY')}"
+    def __init__(self):
+        load_dotenv()
+        self.conn = None
+        try:
+            self.conn = connect(
+                dbname=os.getenv('POSTGRES_DB'),
+                user=os.getenv('POSTGRES_USER'),
+                password=os.getenv('POSTGRES_PASSWORD'),
+                host=os.getenv('POSTGRES_HOST'),
+                port=os.getenv('POSTGRES_PORT')
+            )
+        except Exception as e:
+            logger.error("Database connection error: %s", str(e))
+            if self.conn:
+                self.conn.close()
+                self.conn = None
+            raise
+
+    def __enter__(self) -> psycopg2.extensions.connection:
+        return self.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.conn:
             try:
-                doc_response = requests.get(doc_url, headers=headers, timeout=10)
-                doc_response.raise_for_status()
-                doc_response.raise_for_status()
-                
-                # Save the document
-                save_document(
-                    title=package.get('title', ''),
-                    content=doc_response.text,
-                    metadata={
-                        'package_id': doc_id,
-                        'collection': package.get('collectionCode'),
-                        'date': package.get('granuleDate'),
-                        'type': package.get('documentType')
-                    }
-                )
-                logging.info(f"Successfully saved document {doc_id}")
-            except requests.exceptions.RequestException as e:
-                logger.warning(f"Attempt failed for {doc_url}: {str(e)}")
-                continue
-                
-            try:
-                # Download document with timeout
-                response = requests.get(doc_url, timeout=30)  # 30 second timeout
-                response.raise_for_status()
-                content = response.text
-                
-                # Parse document
-                soup = BeautifulSoup(content, 'html.parser')
-                title = soup.title.string if soup.title else "Untitled Document"
-                
-                # Get metadata
-                metadata = {
-                    'url': doc_url,
-                    'title': title,
-                    'source': 'govinfo',
-                    'processed_at': datetime.now().isoformat()
-                }
-                
-                # Save document
-                save_document(title, content, metadata)
-                
-                logging.info("Successfully processed document: %s", title)
+                if exc_type is not None:
+                    self.conn.rollback()
+                else:
+                    self.conn.commit()
             except Exception as e:
-                logging.error("Error processing document: %s", str(e))
-                logging.error("Traceback: %s", traceback.format_exc())
-                
-    except Exception as e:
-        logging.error(f"Error scraping government database: {str(e)}")
+                logger.error("Error during database transaction: %s", str(e))
+            finally:
+                try:
+                    self.conn.close()
+                except Exception as e:
+                    logger.error("Error closing database connection: %s", str(e))
 
-def save_document(title, content, metadata):
-    """Save document to PostgreSQL database."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
+def scrape_documents() -> None:
+    """Scrape government documents and save to database."""
     try:
-        # Insert document
-        cursor.execute("""
-            INSERT INTO documents (title, content, metadata, created_at, updated_at)
-            VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            RETURNING id
-        """, (title, content, metadata))
-        
-        doc_id = cursor.fetchone()[0]
-        conn.commit()
-        
-        logging.info(f"Saved document with ID: {doc_id}")
-        
-    except Exception as e:
-        conn.rollback()
-        logging.error(f"Error saving document: {str(e)}")
-    finally:
-        cursor.close()
-        conn.close()
+        # Get the API key from environment variables
+        api_key = os.getenv('GOVINFO_API_KEY')
+        if not api_key:
+            logger.error("GOVINFO_API_KEY not found in environment variables")
+            return
 
-def main():
+        # Set up session with retry logic
+        session = create_retry_session()
+
+        # Set up headers
+        headers = {
+            'Accept': 'application/json',
+            'X-Api-Key': api_key
+        }
+
+        try:
+            # Use the session with retry logic
+            response = session.get(
+                'https://api.govinfo.gov/v1/packages',
+                headers=headers,
+                params={'collectionCode': 'BILLS'}
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logger.error("API request error: %s", str(e))
+            raise
+        except ValueError as e:
+            logger.error("Error parsing JSON response: %s", str(e))
+            raise
+        except Exception as e:
+            logger.error("Unexpected error: %s", str(e))
+            raise
+
+        logger.debug(f'API response status: {response.status_code}')
+        logger.debug(f'API response content: {response.text}')
+        packages = response.json().get('packages', [])
+        if not packages:
+            logger.info('No packages found in response')
+            return
+
+        for package in packages:
+            package_id = package.get('packageId')
+            if not package_id:
+                logger.warning(f'Package ID not found in package: {package}')
+                continue
+
+            # Get package details
+            package_url = f'https://api.govinfo.gov/v1/package/{package_id}'
+            try:
+                package_response = session.get(package_url, headers=headers)
+                package_response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                logger.error("API request error: %s", str(e))
+                raise
+            except ValueError as e:
+                logger.error("Error parsing JSON response: %s", str(e))
+                raise
+            except Exception as e:
+                logger.error("Unexpected error: %s", str(e))
+                raise
+
+            logger.debug(f'Package response status: {package_response.status_code}')
+            logger.debug(f'Package response content: {package_response.text}')
+            package_data = package_response.json()
+            
+            # Get document details
+            document_url = package_data.get('packageLink')
+            if not document_url:
+                logger.warning(f'Document URL not found for package: {package_id}')
+                continue
+
+            try:
+                document_response = session.get(document_url)
+                document_response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                logger.error("API request error: %s", str(e))
+                raise
+            except ValueError as e:
+                logger.error("Error parsing JSON response: %s", str(e))
+                raise
+            except Exception as e:
+                logger.error("Unexpected error: %s", str(e))
+                raise
+
+            logger.debug(f'Document response status: {document_response.status_code}')
+            document_content = document_response.text
+
+            try:
+                soup = BeautifulSoup(document_content, 'html.parser')
+                title = soup.title.string if soup.title else "Untitled Document"
+            except Exception as e:
+                logger.error("Error parsing document %s: %s", document_url, str(e))
+                continue
+
+            metadata = DocumentMetadata(
+                title=title,
+                source_url=document_url,
+                source_id=package_id,
+                source_type='govinfo',
+                source_date=package_data.get('dateIssued'),
+                source_collection=package.get('collectionCode'),
+                created_at=datetime.now(),
+                document_type=package.get('documentType')
+            )
+
+            # Save document
+            try:
+                with DatabaseConnection() as db:
+                    doc_id = save_document(document_content, metadata, db)
+                if doc_id:
+                    logger.info("Successfully saved document '%s' with ID %s", metadata['title'], doc_id)
+                else:
+                    logger.error("Failed to save document: %s", metadata['title'])
+            except psycopg2.Error as e:
+                logger.error("Database error saving document %s: %s", document_url, str(e))
+                continue
+            except Exception as e:
+                logger.error("Unexpected error saving document %s: %s", document_url, str(e))
+                continue
+                        
+            # Add rate limiting
+            time.sleep(1)  # Wait 1 second between requests
+                    
+    except Exception as e:
+        logger.error("Error scraping government database: %s", str(e))
+
+def save_document(content: str, metadata: DocumentMetadata, db: Optional[psycopg2.extensions.connection]) -> Optional[str]:
+    """Save document to PostgreSQL database.
+    
+    Args:
+        content: The document content
+        metadata: Dictionary containing document metadata
+        
+    Returns:
+        The ID of the saved document
+        
+    Raises:
+        psycopg2.Error: If there's a database error
+        Exception: For other unexpected errors
+    """
+    if not db:
+        logger.error("No database connection provided")
+        return None
+
+    try:
+        with db.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO documents (title, content, source_url, source_id, source_type, source_date, source_collection, created_at, document_type)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                (
+                    metadata.get('title', 'Untitled Document'),
+                    content,
+                    metadata['source_url'],
+                    metadata['source_id'],
+                    metadata['source_type'],
+                    metadata['source_date'],
+                    metadata['source_collection'],
+                    metadata['created_at'],
+                    metadata.get('document_type')
+                )
+            )
+            result = cursor.fetchone()
+            if not result:
+                logger.error("No ID returned from database insert")
+                return None
+                
+            doc_id = result[0]
+            if not doc_id:
+                logger.error("No document ID returned from database")
+                return None
+                
+            db.commit()
+            return str(doc_id)
+            
+    except psycopg2.Error as e:
+        logger.error("Database error saving document: %s", str(e))
+        if db:
+            db.rollback()
+        return None
+    except Exception as e:
+        logger.error("Unexpected error saving document: %s", str(e))
+        if db:
+            db.rollback()
+        return None
+
+def main() -> None:
     """Main function to run the scraper."""
-    logging.info("Starting document scraping...")
-    scrape_government_db()
-    logging.info("Document scraping completed")
+    try:
+        logger.info("Starting document scraping...")
+        scrape_documents()
+        logger.info("Document scraping completed")
+    except Exception as e:
+        logger.error("Error in main: %s", str(e))
 
 if __name__ == "__main__":
     main()
