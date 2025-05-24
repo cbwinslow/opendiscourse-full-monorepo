@@ -1,10 +1,18 @@
 import yaml
 import requests
-from typing import Dict, Any
-import os
 import logging
+from typing import Dict, Any
+from integration_constants import (
+    MAX_RETRIES, 
+    RETRY_DELAY_SECONDS, 
+    BACKOFF_FACTOR,
+    REQUEST_TIMEOUT,
+    SUCCESS_CODES,
+    RETRYABLE_CODES
+)
+from retry_decorator import retry
 from github import Github
-from bitbucket.client import Client
+from atlassian import Jira, Bitbucket
 
 # Set up logging
 logging.basicConfig(
@@ -14,64 +22,206 @@ logging.basicConfig(
 
 def load_config() -> Dict[str, Any]:
     """Load configuration from YAML file."""
-    with open('integration_config.yaml', 'r') as f:
-        return yaml.safe_load(f)
-
-def setup_jira_webhook(config: Dict[str, Any]) -> None:
-    """Set up Jira webhook for GitHub repository."""
     try:
-        headers = {
-            'Authorization': f'Basic {config["jira"]["api_token"]}',
-            'Content-Type': 'application/json'
-        }
-        
-        webhook_data = {
-            'name': 'GitHub Webhook',
-            'url': config['webhooks']['jira_webhook_url'],
-            'events': ['push']
-        }
-        
-        response = requests.post(
-            f"{config['jira']['base_url']}/rest/webhook/1.0/webhook",
-            headers=headers,
-            json=webhook_data
-        )
-        
-        response.raise_for_status()
-        logging.info("Successfully set up Jira webhook")
+        with open('integration_config.yaml', 'r') as f:
+            return yaml.safe_load(f)
     except Exception as e:
-        logging.error(f"Failed to set up Jira webhook: {str(e)}")
+        logging.error(f"Failed to load configuration: {str(e)}")
         raise
 
+@retry(max_retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, backoff=BACKOFF_FACTOR)
+def setup_jira_webhook(config: Dict[str, Any]) -> None:
+    """Set up Jira webhook for GitHub integration."""
+    try:
+        jira_config = config.get("jira", {})
+        
+        def validate_jira_config(jira_config: Dict[str, Any]) -> None:
+            """Validate Jira configuration."""
+            required_fields = ["base_url", "username", "api_token", "webhook_url"]
+            missing_fields = [field for field in required_fields if field not in jira_config]
+            
+            if missing_fields:
+                logging.error(f"Missing required Jira configuration fields: {', '.join(missing_fields)}")
+                raise Exception(f"Missing required Jira configuration fields: {', '.join(missing_fields)}")
+            
+            # Check for placeholder values
+            placeholder_values = []
+            if jira_config["username"] == "your-jira-email":
+                placeholder_values.append("username")
+            if jira_config["api_token"] == "your-jira-api-token":
+                placeholder_values.append("api_token")
+            
+            if placeholder_values:
+                logging.error(f"Please replace placeholder values in Jira configuration: {', '.join(placeholder_values)}")
+                raise Exception(f"Please replace placeholder values in Jira configuration: {', '.join(placeholder_values)}")
+
+        validate_jira_config(jira_config)
+
+        # Initialize Jira client with detailed error handling
+        try:
+            jira = Jira(
+                url=jira_config["base_url"],
+                username=jira_config["username"],
+                password=jira_config["api_token"],
+                cloud=True  # Explicitly set cloud=True for Jira Cloud
+            )
+            
+            # Test basic authentication
+            try:
+                auth_response = jira.get("rest/api/2/myself", headers={"Accept": "application/json"})
+                if auth_response.status_code == 200:
+                    logging.info("Successfully authenticated with Jira")
+                else:
+                    logging.error(f"Authentication failed. Status code: {auth_response.status_code}")
+                    logging.error(f"Response content: {auth_response.text}")
+                    raise Exception(f"Authentication failed with status code {auth_response.status_code}")
+            except Exception as auth_error:
+                logging.error(f"Failed to authenticate with Jira: {str(auth_error)}")
+                raise
+        except Exception as init_error:
+            logging.error(f"Failed to initialize Jira client: {str(init_error)}")
+            raise
+
+        # Test connection to Jira
+        try:
+            # Try a simple GET request to test connection
+            response = jira.get("rest/api/2/myself")
+            if response.status_code == 200:
+                logging.info("Successfully connected to Jira")
+                return
+            
+            # Log detailed error information
+            logging.error(f"Failed to connect to Jira. Status code: {response.status_code}")
+            try:
+                error_details = response.json()
+                logging.error(f"Error details: {error_details}")
+            except ValueError:
+                logging.error(f"Response text: {response.text}")
+            
+            raise Exception(f"Failed to connect to Jira. Status code: {response.status_code}")
+        except requests.exceptions.HTTPError as e:
+            logging.error(f"HTTP error occurred: {str(e)}")
+            logging.error(f"Response status: {e.response.status_code if e.response else 'No response'}")
+            try:
+                logging.error(f"Response content: {e.response.content.decode() if e.response else 'No response content'}")
+            except Exception:
+                logging.error("Could not decode response content")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error connecting to Jira: {str(e)}")
+            raise
+
+        # Get existing webhooks using REST API
+        try:
+            response = jira.get("rest/webhooks/1.0/webhook")
+            response.raise_for_status()
+            existing_webhooks = response.json()
+            webhook_name = "GitHub Integration Webhook"
+            
+            # Check if webhook already exists
+            existing_webhook = next((w for w in existing_webhooks if w.get('name') == webhook_name), None)
+            
+            if existing_webhook:
+                logging.info(f"Webhook '{webhook_name}' already exists")
+                return
+
+            # Create new webhook
+            webhook_data = {
+                "name": webhook_name,
+                "url": webhook_url,
+                "description": "Webhook for GitHub integration",
+                "events": ["jira:issue_created", "jira:issue_updated", "jira:issue_deleted"],
+                "filters": {
+                    "issueCreated": True,
+                    "issueUpdated": True,
+                    "issueDeleted": True
+                },
+                "authentication": {
+                    "type": "none"
+                }
+            }
+
+            try:
+                # Create webhook using REST API
+                response = jira.post("rest/webhooks/1.0/webhook", json=webhook_data)
+                if response.status_code == 201:
+                    logging.info("Successfully created Jira webhook")
+                    return
+                elif response.status_code == 409:
+                    logging.info("Webhook already exists with this URL")
+                    return
+                
+                # For other status codes, log more details
+                logging.error(f"Failed to create Jira webhook. Status code: {response.status_code}")
+                try:
+                    error_details = response.json()
+                    logging.error(f"Error details: {error_details}")
+                except ValueError:
+                    logging.error(f"Response text: {response.text}")
+                raise Exception(f"Failed to create Jira webhook. Status code: {response.status_code}")
+            except requests.exceptions.HTTPError as e:
+                logging.error(f"HTTP error occurred: {str(e)}")
+                logging.error(f"Response status: {e.response.status_code if e.response else 'No response'}")
+                try:
+                    logging.error(f"Response content: {e.response.content.decode() if e.response else 'No response content'}")
+                except Exception:
+                    logging.error("Could not decode response content")
+                raise
+            except Exception as e:
+                logging.error(f"Unexpected error: {str(e)}")
+                raise
+        except requests.exceptions.HTTPError as e:
+            logging.error(f"Failed to create Jira webhook. Error: {str(e)}")
+            logging.error(f"Response text: {e.response.text if e.response else 'No response text'}")
+            raise
+        except Exception as e:
+            logging.error(f"Failed to create Jira webhook. Error: {str(e)}")
+            raise
+    except Exception as e:
+        logging.error(f"Error setting up Jira webhook: {str(e)}")
+        raise
+
+@retry(max_retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, backoff=BACKOFF_FACTOR)
 def setup_bitbucket_webhook(config: Dict[str, Any]) -> None:
     """Set up Bitbucket webhook for GitHub repository."""
     try:
-        client = Client(
-            username=config['bitbucket']['username'],
-            password=config['bitbucket']['app_password']
+        bitbucket_config = config['bitbucket']
+        bitbucket = Bitbucket(
+            url=bitbucket_config['base_url'],
+            username=bitbucket_config['username'],
+            password=bitbucket_config['app_password']
         )
         
+        # Create webhook
+        webhook_url = config['webhooks']['bitbucket']
         webhook_data = {
             'description': 'GitHub Webhook',
-            'url': config['webhooks']['bitbucket_webhook_url'],
+            'url': webhook_url,
             'active': True,
-            'events': ['repo:push']
+            'events': ['repo:push', 'repo:fork']
         }
         
-        response = client.post(
-            f"/repositories/{config['bitbucket']['workspace']}/opendiscourse/hooks",
-            json=webhook_data
+        # Get repository
+        workspace = bitbucket_config['workspace']
+        repo_slug = config['github']['repository'].split('/')[-1]
+        
+        # Create webhook
+        response = bitbucket.create_webhook(
+            workspace=workspace,
+            repo_slug=repo_slug,
+            webhook_data=webhook_data
         )
         
         if response.status_code == 201:
-            logging.info("Successfully set up Bitbucket webhook")
+            logging.info(f"Successfully created Bitbucket webhook at {webhook_url}")
         else:
-            logging.error(f"Failed to set up Bitbucket webhook: {response.text}")
-            raise Exception("Failed to set up Bitbucket webhook")
+            logging.error(f"Failed to create Bitbucket webhook. Status code: {response.status_code}")
+            raise Exception(f"Failed to create Bitbucket webhook. Status code: {response.status_code}")
     except Exception as e:
-        logging.error(f"Failed to set up Bitbucket webhook: {str(e)}")
+        logging.error(f"Error setting up Bitbucket webhook: {str(e)}")
         raise
 
+@retry(max_retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, backoff=BACKOFF_FACTOR)
 def setup_github_webhooks(config: Dict[str, Any]) -> None:
     """Set up GitHub webhooks for Jira and Bitbucket."""
     try:
@@ -104,34 +254,49 @@ def setup_github_webhooks(config: Dict[str, Any]) -> None:
             active=True
         )
         logging.info("Successfully set up GitHub webhook for Bitbucket")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Request error setting up GitHub webhooks: {str(e)}")
+        raise
     except Exception as e:
-        logging.error(f"Failed to set up GitHub webhooks: {str(e)}")
+        logging.error(f"Unexpected error setting up GitHub webhooks: {str(e)}")
         raise
 
+@retry(max_retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, backoff=BACKOFF_FACTOR)
 def setup_repository_links(config: Dict[str, Any]) -> None:
     """Set up repository links between GitHub and Bitbucket."""
     try:
-        client = Client(
-            username=config['bitbucket']['username'],
-            password=config['bitbucket']['app_password']
+        bitbucket_config = config['bitbucket']
+        bitbucket = Bitbucket(
+            url=bitbucket_config['base_url'],
+            username=bitbucket_config['username'],
+            password=bitbucket_config['app_password']
         )
         
-        response = client.post(
-            f"/repositories/{config['bitbucket']['workspace']}/opendiscourse/links",
-            json={
-                'repository': {
-                    'url': f"https://github.com/{config['github']['repository']}"
-                }
-            }
+        # Get repository
+        workspace = bitbucket_config['workspace']
+        repo_slug = config['github']['repository'].split('/')[-1]
+        
+        # Create repository link
+        link_data = {
+            'name': 'GitHub Link',
+            'url': f'https://github.com/{config["github"]["repository"]}',
+            'type': 'github'
+        }
+        
+        # Create link
+        response = bitbucket.create_link(
+            workspace=workspace,
+            repo_slug=repo_slug,
+            link_data=link_data
         )
         
         if response.status_code == 201:
-            logging.info("Successfully linked GitHub repository to Bitbucket")
+            logging.info(f"Successfully created repository link to GitHub")
         else:
-            logging.error(f"Failed to link repositories: {response.text}")
-            raise Exception("Failed to link repositories")
+            logging.error(f"Failed to create repository link. Status code: {response.status_code}")
+            raise Exception(f"Failed to create repository link. Status code: {response.status_code}")
     except Exception as e:
-        logging.error(f"Failed to set up repository links: {str(e)}")
+        logging.error(f"Error setting up repository links: {str(e)}")
         raise
 
 def main():
@@ -148,6 +313,12 @@ def main():
         # Setup repository links
         setup_repository_links(config)
         
+        # Verify the setup
+        from verify_integration import main as verify_main
+        if not verify_main():
+            logging.error("Verification failed after setup")
+            raise Exception("Integration verification failed")
+            
         logging.info("Integration setup completed successfully!")
         
     except Exception as e:
