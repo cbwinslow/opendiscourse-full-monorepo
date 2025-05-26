@@ -48,6 +48,43 @@ A platform for analyzing and processing government documents using advanced NLP 
    - Document processor: `python govinfo_document_processor.py`
    - Scraper: `python govinfo_scraper.py`
 
+## Development Setup
+
+1. Install development dependencies:
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+2. Install pre-commit hooks:
+   ```bash
+   pre-commit install
+   ```
+
+3. The pre-commit hooks will now run automatically on each commit, checking and fixing code style issues.
+
+### Code Style
+
+This project uses:
+- [Black](https://black.readthedocs.io/) for code formatting
+- [Ruff](https://github.com/astral-sh/ruff) for linting and code quality
+- Pre-commit hooks to enforce these standards
+
+To manually run the formatters and linters:
+
+```bash
+# Format code with Black
+black .
+
+# Run Ruff linter
+ruff check .
+
+# Fix all auto-fixable issues
+ruff check --fix .
+
+# Run all pre-commit hooks manually
+pre-commit run --all-files
+```
+
 ## Environment Variables
 
 ```
