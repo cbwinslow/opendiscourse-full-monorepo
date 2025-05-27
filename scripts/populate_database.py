@@ -3,9 +3,8 @@ import os
 
 import psycopg2
 from dotenv import load_dotenv
-from psycopg2.extras import RealDictCursor
-
 from entity_extractor import process_document
+from psycopg2.extras import RealDictCursor
 from scrape_documents import scrape_documents
 
 # Set up logging

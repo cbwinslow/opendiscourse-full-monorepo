@@ -3,7 +3,6 @@ from typing import Any, Dict
 
 import requests
 import yaml
-
 from integration_constants import (
     RETRYABLE_CODES,
     SUCCESS_CODES,

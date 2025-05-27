@@ -4,11 +4,10 @@ import os
 from contextlib import contextmanager
 from typing import Generator
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-
 from base import Base
 from base import init_database as base_init_database
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 # Get database URL from environment variable
 DATABASE_URL = os.getenv(

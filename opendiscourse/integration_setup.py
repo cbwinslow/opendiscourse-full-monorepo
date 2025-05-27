@@ -5,7 +5,6 @@ import requests
 import yaml
 from atlassian import Bitbucket, Jira
 from github import Github
-
 from integration_constants import (
     BACKOFF_FACTOR,
     MAX_RETRIES,

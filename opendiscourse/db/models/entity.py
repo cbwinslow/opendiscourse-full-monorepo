@@ -4,12 +4,11 @@ from datetime import datetime
 from enum import Enum as PythonEnum
 from typing import Any, Dict, Optional, Type, TypeVar, cast, final
 
+from base import Base
 from sqlalchemy import Enum, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func as sql_func
-
-from base import Base
 
 # Type variable for entity subclasses
 T = TypeVar("T", bound="Entity")
