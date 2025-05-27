@@ -1,0 +1,42 @@
+# OpenDiscourse Windsurf Rules
+# This file guides the AI assistant in generating code that adheres to our standards
+
+# Core Rules
+- Always follow PEP 8 style guide
+- Use type hints for all function parameters and return values
+- Document all public APIs with Google-style docstrings
+- Include comprehensive error handling
+- Write unit tests for new functionality
+
+# File Structure
+- Keep files under 500 lines
+- Split large files into smaller modules
+- Use `__init__.py` to define public API
+
+# Import Order
+1. Standard library imports
+2. Third-party imports
+3. Local application imports
+
+# Type Hints
+- Use Python 3.9+ type hints (list[Type], dict[Key, Value])
+- Define custom types using TypeVar when needed
+- Use Optional[Type] for nullable values
+
+# Error Handling
+- Create specific exception classes
+- Include context in error messages
+- Use try/except blocks judiciously
+- Never use bare except clauses
+
+# Documentation
+- Document all public APIs
+- Include Args, Returns, and Raises in docstrings
+- Keep docstrings up-to-date with code changes
+- Include examples for complex functions
+
+# Testing
+- Write unit tests for all new functionality
+- Aim for high test coverage
+- Test edge cases and error conditions
+- Use fixtures and parameterized tests where appropriate

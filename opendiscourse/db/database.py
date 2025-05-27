@@ -1,8 +1,8 @@
 """Database connection and session management."""
 
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 from base import Base
 from base import init_database as base_init_database

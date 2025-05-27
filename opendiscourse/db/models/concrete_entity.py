@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type, TypeVar, cast
+from typing import Any, Optional, TypeVar, cast
 
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,7 +17,7 @@ class ConcreteEntity(Entity):
     name: Mapped[str] = mapped_column(unique=True, index=True)
     entity_type: Mapped[EntityType] = mapped_column(nullable=False)
     description: Mapped[Optional[str]] = mapped_column(nullable=True)
-    metadata_: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    metadata_: Mapped[Optional[dict[str, Any]]] = mapped_column(
         "metadata", nullable=True
     )
     created_at = Entity.created_at
@@ -28,7 +28,7 @@ class ConcreteEntity(Entity):
         name: str,
         entity_type: EntityType,
         description: Optional[str] = None,
-        metadata_: Optional[Dict[str, Any]] = None,
+        metadata_: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(
             name=name,
@@ -38,6 +38,6 @@ class ConcreteEntity(Entity):
         )
 
     @classmethod
-    def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+    def from_dict(cls: type[T], data: dict[str, Any]) -> T:
         """Create a ConcreteEntity instance from a dictionary."""
         return cast(T, super().from_dict(data))

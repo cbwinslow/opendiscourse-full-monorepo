@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from dotenv import load_dotenv
 from transformers import pipeline
@@ -15,7 +15,7 @@ load_dotenv()
 ner_pipeline = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english")
 
 
-def extract_entities(text: str) -> List[Dict[str, Any]]:
+def extract_entities(text: str) -> list[dict[str, Any]]:
     """Extract named entities from text using transformers pipeline.
 
     Args:
@@ -33,7 +33,7 @@ def extract_entities(text: str) -> List[Dict[str, Any]]:
         return []
 
 
-def group_entities_by_type(entities: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+def group_entities_by_type(entities: list[dict[str, Any]]) -> dict[str, list[str]]:
     """Group entities by their type (e.g., PERSON, ORGANIZATION).
 
     Args:
@@ -51,7 +51,7 @@ def group_entities_by_type(entities: List[Dict[str, Any]]) -> Dict[str, List[str
     return grouped
 
 
-def extract_and_group_entities(text: str) -> Dict[str, List[str]]:
+def extract_and_group_entities(text: str) -> dict[str, list[str]]:
     """Extract and group entities from text in one step.
 
     Args:
@@ -64,7 +64,7 @@ def extract_and_group_entities(text: str) -> Dict[str, List[str]]:
     return group_entities_by_type(entities)
 
 
-def process_document(doc_id: int, content: str) -> Dict[str, Any]:
+def process_document(doc_id: int, content: str) -> dict[str, Any]:
     """Process a document by extracting and grouping entities.
 
     Args:

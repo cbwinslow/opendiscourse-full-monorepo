@@ -1,7 +1,7 @@
 import logging
 import os
 import traceback
-from typing import Any, Dict, List
+from typing import Any
 
 import pinecone
 from dotenv import load_dotenv
@@ -13,7 +13,7 @@ logging.basicConfig(
 )
 
 
-def search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+def search(query: str, top_k: int = 5) -> list[dict[str, Any]]:
     """Search for documents similar to the given query.
 
     Args:

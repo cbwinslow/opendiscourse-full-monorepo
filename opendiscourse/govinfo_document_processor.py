@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from xml.etree import ElementTree as ET
 
 import psycopg2
@@ -71,12 +71,12 @@ def get_db_connection():
     )
 
 
-def validate_schema(content: str, collection: str) -> Dict[str, Any]:
+def validate_schema(content: str, collection: str) -> dict[str, Any]:
     """Validate XML content against USLM schema."""
     try:
         schema_path = f"/media/cbwinslow/CBWHDD/opendiscourse/docs/ref/uslm/{SCHEMA_VERSIONS[collection]}"
         schema = xmlschema.XMLSchema(schema_path)
-        validation_result = schema.validate(content)
+        schema.validate(content)
 
         return {
             "is_valid": True,
@@ -91,7 +91,7 @@ def validate_schema(content: str, collection: str) -> Dict[str, Any]:
         }
 
 
-def validate_metadata(metadata: Dict[str, Any], collection: str) -> Dict[str, Any]:
+def validate_metadata(metadata: dict[str, Any], collection: str) -> dict[str, Any]:
     """Validate document metadata."""
     required_fields = {
         "BILLS": ["title", "version", "document_id"],
@@ -115,18 +115,18 @@ def calculate_content_hash(content: str) -> str:
 
 def find_previous_version(
     doc_id: str, collection: str, conn: psycopg2.extensions.connection
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     """Find previous version of a document."""
     cursor = conn.cursor()
     try:
         cursor.execute(
             """
-            SELECT id, content, version 
-            FROM documents 
-            WHERE collection_type = %s 
-            AND document_id = %s 
-            AND status = 'completed' 
-            ORDER BY processed_at DESC 
+            SELECT id, content, version
+            FROM documents
+            WHERE collection_type = %s
+            AND document_id = %s
+            AND status = 'completed'
+            ORDER BY processed_at DESC
             LIMIT 1
         """,
             (collection, doc_id),
@@ -142,7 +142,7 @@ def find_previous_version(
 
 def process_uslm(
     doc_id: str, content: str, collection: str
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     """Process a USLM document with all validation and version tracking."""
     try:
         # Parse XML content
@@ -289,9 +289,9 @@ def process_federal_register(doc_id, content):
 def save_document(
     doc_id: str,
     content: str,
-    metadata: Dict[str, Any],
-    schema_validation: Dict[str, Any],
-    metadata_validation: Dict[str, Any],
+    metadata: dict[str, Any],
+    schema_validation: dict[str, Any],
+    metadata_validation: dict[str, Any],
     status: str,
     collection: str,
 ) -> None:
@@ -374,8 +374,8 @@ def save_document(
         if metadata.get("previous_version_id"):
             cursor.execute(
                 """
-                UPDATE documents 
-                SET next_version_id = %s 
+                UPDATE documents
+                SET next_version_id = %s
                 WHERE id = %s
             """,
                 (new_doc_id, metadata["previous_version_id"]),
@@ -427,11 +427,11 @@ def process_document(doc_id: str, collection: str, content: str) -> None:
             # Update status to error if processing failed
             cursor.execute(
                 """
-                UPDATE documents 
-                SET status = %s, 
-                    error_message = %s, 
+                UPDATE documents
+                SET status = %s,
+                    error_message = %s,
                     processed_at = CURRENT_TIMESTAMP
-                WHERE document_id = %s 
+                WHERE document_id = %s
                 AND collection_type = %s
             """,
                 (DocumentStatus.ERROR, "Processing failed", doc_id, collection),
@@ -444,11 +444,11 @@ def process_document(doc_id: str, collection: str, content: str) -> None:
             # Update status to error if there was a database error
             cursor.execute(
                 """
-                UPDATE documents 
-                SET status = %s, 
-                    error_message = %s, 
+                UPDATE documents
+                SET status = %s,
+                    error_message = %s,
                     processed_at = CURRENT_TIMESTAMP
-                WHERE document_id = %s 
+                WHERE document_id = %s
                 AND collection_type = %s
             """,
                 (DocumentStatus.ERROR, str(e), doc_id, collection),

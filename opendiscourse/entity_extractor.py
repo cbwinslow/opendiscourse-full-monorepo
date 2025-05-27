@@ -5,7 +5,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import psycopg2
 from dotenv import load_dotenv
@@ -70,9 +70,11 @@ class Entity:
 
     def __post_init__(self) -> None:
         if not self.text or not isinstance(self.text, str):
-            raise ValueError("Entity text must be a non-empty string")
+            msg = "Entity text must be a non-empty string"
+            raise ValueError(msg)
         if not self.label or not isinstance(self.label, str):
-            raise ValueError("Entity label must be a non-empty string")
+            msg = "Entity label must be a non-empty string"
+            raise ValueError(msg)
 
 
 def get_db_connection():
@@ -86,7 +88,7 @@ def get_db_connection():
     )
 
 
-def extract_entities(text: str, document_id: int) -> List[Dict[str, Any]]:
+def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
     """Extract entities from text using transformers and custom patterns."""
     try:
         # Process with transformers
@@ -96,7 +98,7 @@ def extract_entities(text: str, document_id: int) -> List[Dict[str, Any]]:
         probabilities = torch.softmax(torch.tensor(entities), dim=-1)
 
         # Get the predicted labels
-        predictions = torch.argmax(probabilities, dim=-1)
+        torch.argmax(probabilities, dim=-1)
 
         # Convert token IDs to tokens
         tokens = [entity["word"] for entity in entities]
@@ -104,8 +106,8 @@ def extract_entities(text: str, document_id: int) -> List[Dict[str, Any]]:
         # Get the predicted labels
         predicted_labels = [entity["entity"] for entity in entities]
 
-        transformer_entities: List[Dict[str, Any]] = []
-        current_entity: Optional[Entity] = None
+        transformer_entities: list[dict[str, Any]] = []
+        current_entity: Entity | None = None
         current_entity_text = ""
 
         for token, label in zip(tokens, predicted_labels):
@@ -158,7 +160,7 @@ def _process_entity_text(
     label: str,
     text: str,
     probabilities: torch.Tensor,
-    entities_list: List[Dict[str, Any]],
+    entities_list: list[dict[str, Any]],
 ) -> None:
     """Process a single entity's text and add it to the entities list."""
     clean_text = entity_text.replace("##", "").strip()
@@ -176,11 +178,11 @@ def _process_entity_text(
 
 
 def _process_entity_list(
-    entities: List[Dict[str, Any]], document_id: int, text: str
-) -> List[Dict[str, Any]]:
+    entities: list[dict[str, Any]], document_id: int, text: str
+) -> list[dict[str, Any]]:
     """Process the list of extracted entities."""
-    result: List[Dict[str, Any]] = []
-    seen_entities: Set[str] = set()
+    result: list[dict[str, Any]] = []
+    seen_entities: set[str] = set()
 
     for ent in entities:
         entity_text = ent["entity"]
@@ -203,7 +205,7 @@ def _process_entity_list(
 
 
 def _process_vector_db_entity(
-    entity_text: str, entity: Dict[str, Any], document_id: int
+    entity_text: str, entity: dict[str, Any], document_id: int
 ) -> None:
     """Process an entity for vector database operations."""
     try:
@@ -248,7 +250,7 @@ def _process_vector_db_entity(
     return entities
 
 
-def deduplicate_entities(entities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def deduplicate_entities(entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Deduplicate entities based on text and type."""
     seen = set()
     unique_entities = []
@@ -263,8 +265,8 @@ def deduplicate_entities(entities: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 
 
 def infer_relationships(
-    entities: List[Dict[str, Any]], text: str
-) -> List[Dict[str, Any]]:
+    entities: list[dict[str, Any]], text: str
+) -> list[dict[str, Any]]:
     """Infer relationships between entities based on context."""
     relationships = []
 
@@ -297,8 +299,8 @@ def infer_relationships(
 
 
 def extract_declarations(
-    entities: List[Dict[str, Any]], text: str
-) -> List[Dict[str, Any]]:
+    entities: list[dict[str, Any]], text: str
+) -> list[dict[str, Any]]:
     """Extract declarations from text."""
     declarations = []
 
@@ -333,7 +335,7 @@ def extract_declarations(
     return declarations
 
 
-def save_entity(entity: Dict[str, Any]) -> int:
+def save_entity(entity: dict[str, Any]) -> int:
     """Save entity to database.
 
     Args:
@@ -368,7 +370,8 @@ def save_entity(entity: Dict[str, Any]) -> int:
             )
             result = cur.fetchone()
             if not result:
-                raise ValueError("Failed to save entity: no ID returned")
+                msg = "Failed to save entity: no ID returned"
+                raise ValueError(msg)
             entity_id = result["id"]
             conn.commit()
             return entity_id
@@ -381,7 +384,7 @@ def save_entity(entity: Dict[str, Any]) -> int:
         conn.close()
 
 
-def save_entity_relationship(relationship: Dict[str, Any]) -> None:
+def save_entity_relationship(relationship: dict[str, Any]) -> None:
     """Save entity relationship to database."""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -410,7 +413,7 @@ def save_entity_relationship(relationship: Dict[str, Any]) -> None:
 
 
 def save_entity_mention(
-    mention: Dict[str, Any], document_id: int, entity_id: int
+    mention: dict[str, Any], document_id: int, entity_id: int
 ) -> None:
     """Save entity mention to database."""
     conn = get_db_connection()
@@ -437,7 +440,7 @@ def save_entity_mention(
         conn.close()
 
 
-def save_declaration(declaration: Dict[str, Any], document_id: int) -> None:
+def save_declaration(declaration: dict[str, Any], document_id: int) -> None:
     """Save declaration to database."""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -463,7 +466,7 @@ def save_declaration(declaration: Dict[str, Any], document_id: int) -> None:
         conn.close()
 
 
-def process_document(document_id: int, content: str, metadata: Dict[str, str]) -> None:
+def process_document(document_id: int, content: str, metadata: dict[str, str]) -> None:
     """Process a document for entity extraction."""
     try:
         # Extract entities with continuous discovery
@@ -508,10 +511,10 @@ def main():
     try:
         cursor.execute(
             """
-            SELECT id, content 
-            FROM documents 
-            WHERE status = 'completed' 
-            AND NOT EXISTS (SELECT 1 FROM entity_mentions WHERE document_id = documents.id) 
+            SELECT id, content
+            FROM documents
+            WHERE status = 'completed'
+            AND NOT EXISTS (SELECT 1 FROM entity_mentions WHERE document_id = documents.id)
             LIMIT 100
         """
         )

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum as PythonEnum
-from typing import Any, Dict, Optional, Type, TypeVar, cast, final
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, cast, final
 
 from base import Base
 from sqlalchemy import Enum, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func as sql_func
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 # Type variable for entity subclasses
 T = TypeVar("T", bound="Entity")
@@ -39,8 +41,8 @@ class Entity(Base):
     entity_type: Mapped[EntityType] = mapped_column(
         Enum(EntityType, name="entity_type"), nullable=False
     )
-    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    metadata_: Mapped[Optional[Dict[str, Any]]] = mapped_column(  # type: ignore[assignment]
+    description: Mapped[str | None] = mapped_column(String, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(  # type: ignore[assignment]
         "metadata", JSONB, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(server_default=sql_func.now())
@@ -52,8 +54,8 @@ class Entity(Base):
         self,
         name: str,
         entity_type: EntityType,
-        description: Optional[str] = None,
-        metadata_: Optional[Dict[str, Any]] = None,
+        description: str | None = None,
+        metadata_: dict[str, Any] | None = None,
     ) -> None:
         """Initialize a new Entity.
 
@@ -77,7 +79,7 @@ class Entity(Base):
         """
         return f"<{self.__class__.__name__}(id={self.id}, name='{self.name}', type='{self.entity_type}')>"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the entity to a dictionary.
 
         Returns:
@@ -90,7 +92,7 @@ class Entity(Base):
         return result
 
     @classmethod
-    def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+    def from_dict(cls: type[T], data: dict[str, Any]) -> T:
         """Create an Entity instance from a dictionary.
 
         Args:
@@ -103,19 +105,22 @@ class Entity(Base):
             ValueError: If required fields are missing or invalid
         """
         if "entity_type" not in data:
-            raise ValueError("entity_type is required")
+            msg = "entity_type is required"
+            raise ValueError(msg)
 
         try:
             entity_type = EntityType(cast(str, data["entity_type"]))
         except ValueError as e:
-            raise ValueError(f"Invalid entity_type: {data['entity_type']}") from e
+            msg = f"Invalid entity_type: {data['entity_type']}"
+            raise ValueError(msg) from e
 
         if "name" not in data:
-            raise ValueError("name is required")
+            msg = "name is required"
+            raise ValueError(msg)
 
         return cls(
             name=cast(str, data["name"]),
             entity_type=entity_type,
             description=cast(Optional[str], data.get("description")),
-            metadata_=cast(Optional[Dict[str, Any]], data.get("metadata")),
+            metadata_=cast(Optional[dict[str, Any]], data.get("metadata")),
         )

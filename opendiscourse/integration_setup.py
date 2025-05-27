@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import requests
 import yaml
@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     """Load configuration from YAML file."""
     try:
         with open("integration_config.yaml") as f:
@@ -29,12 +29,12 @@ def load_config() -> Dict[str, Any]:
 
 
 @retry(max_retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, backoff=BACKOFF_FACTOR)
-def setup_jira_webhook(config: Dict[str, Any]) -> None:
+def setup_jira_webhook(config: dict[str, Any]) -> None:
     """Set up Jira webhook for GitHub integration."""
     try:
         jira_config = config.get("jira", {})
 
-        def validate_jira_config(jira_config: Dict[str, Any]) -> None:
+        def validate_jira_config(jira_config: dict[str, Any]) -> None:
             """Validate Jira configuration."""
             required_fields = ["base_url", "username", "api_token", "webhook_url"]
             missing_fields = [
@@ -45,9 +45,8 @@ def setup_jira_webhook(config: Dict[str, Any]) -> None:
                 logging.error(
                     f"Missing required Jira configuration fields: {', '.join(missing_fields)}"
                 )
-                raise Exception(
-                    f"Missing required Jira configuration fields: {', '.join(missing_fields)}"
-                )
+                msg = f"Missing required Jira configuration fields: {', '.join(missing_fields)}"
+                raise Exception(msg)
 
             # Check for placeholder values
             placeholder_values = []
@@ -60,9 +59,8 @@ def setup_jira_webhook(config: Dict[str, Any]) -> None:
                 logging.error(
                     f"Please replace placeholder values in Jira configuration: {', '.join(placeholder_values)}"
                 )
-                raise Exception(
-                    f"Please replace placeholder values in Jira configuration: {', '.join(placeholder_values)}"
-                )
+                msg = f"Please replace placeholder values in Jira configuration: {', '.join(placeholder_values)}"
+                raise Exception(msg)
 
         validate_jira_config(jira_config)
 
@@ -87,9 +85,8 @@ def setup_jira_webhook(config: Dict[str, Any]) -> None:
                         f"Authentication failed. Status code: {auth_response.status_code}"
                     )
                     logging.error(f"Response content: {auth_response.text}")
-                    raise Exception(
-                        f"Authentication failed with status code {auth_response.status_code}"
-                    )
+                    msg = f"Authentication failed with status code {auth_response.status_code}"
+                    raise Exception(msg)
             except Exception as auth_error:
                 logging.error(f"Failed to authenticate with Jira: {auth_error!s}")
                 raise
@@ -115,9 +112,8 @@ def setup_jira_webhook(config: Dict[str, Any]) -> None:
             except ValueError:
                 logging.error(f"Response text: {response.text}")
 
-            raise Exception(
-                f"Failed to connect to Jira. Status code: {response.status_code}"
-            )
+            msg = f"Failed to connect to Jira. Status code: {response.status_code}"
+            raise Exception(msg)
         except requests.exceptions.HTTPError as e:
             logging.error(f"HTTP error occurred: {e!s}")
             logging.error(
@@ -187,9 +183,8 @@ def setup_jira_webhook(config: Dict[str, Any]) -> None:
                     logging.error(f"Error details: {error_details}")
                 except ValueError:
                     logging.error(f"Response text: {response.text}")
-                raise Exception(
-                    f"Failed to create Jira webhook. Status code: {response.status_code}"
-                )
+                msg = f"Failed to create Jira webhook. Status code: {response.status_code}"
+                raise Exception(msg)
             except requests.exceptions.HTTPError as e:
                 logging.error(f"HTTP error occurred: {e!s}")
                 logging.error(
@@ -220,7 +215,7 @@ def setup_jira_webhook(config: Dict[str, Any]) -> None:
 
 
 @retry(max_retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, backoff=BACKOFF_FACTOR)
-def setup_bitbucket_webhook(config: Dict[str, Any]) -> None:
+def setup_bitbucket_webhook(config: dict[str, Any]) -> None:
     """Set up Bitbucket webhook for GitHub repository."""
     try:
         bitbucket_config = config["bitbucket"]
@@ -254,23 +249,22 @@ def setup_bitbucket_webhook(config: Dict[str, Any]) -> None:
             logging.error(
                 f"Failed to create Bitbucket webhook. Status code: {response.status_code}"
             )
-            raise Exception(
-                f"Failed to create Bitbucket webhook. Status code: {response.status_code}"
-            )
+            msg = f"Failed to create Bitbucket webhook. Status code: {response.status_code}"
+            raise Exception(msg)
     except Exception as e:
         logging.error(f"Error setting up Bitbucket webhook: {e!s}")
         raise
 
 
 @retry(max_retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, backoff=BACKOFF_FACTOR)
-def setup_github_webhooks(config: Dict[str, Any]) -> None:
+def setup_github_webhooks(config: dict[str, Any]) -> None:
     """Set up GitHub webhooks for Jira and Bitbucket."""
     try:
         g = Github(config["github"]["token"])
         repo = g.get_repo(config["github"]["repository"])
 
         # Set up Jira webhook
-        jira_webhook = repo.create_hook(
+        repo.create_hook(
             name="web",
             config={
                 "url": config["webhooks"]["jira_webhook_url"],
@@ -282,7 +276,7 @@ def setup_github_webhooks(config: Dict[str, Any]) -> None:
         logging.info("Successfully set up GitHub webhook for Jira")
 
         # Set up Bitbucket webhook
-        bitbucket_webhook = repo.create_hook(
+        repo.create_hook(
             name="web",
             config={
                 "url": config["webhooks"]["bitbucket_webhook_url"].format(
@@ -304,7 +298,7 @@ def setup_github_webhooks(config: Dict[str, Any]) -> None:
 
 
 @retry(max_retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, backoff=BACKOFF_FACTOR)
-def setup_repository_links(config: Dict[str, Any]) -> None:
+def setup_repository_links(config: dict[str, Any]) -> None:
     """Set up repository links between GitHub and Bitbucket."""
     try:
         bitbucket_config = config["bitbucket"]
@@ -336,9 +330,10 @@ def setup_repository_links(config: Dict[str, Any]) -> None:
             logging.error(
                 f"Failed to create repository link. Status code: {response.status_code}"
             )
-            raise Exception(
+            msg = (
                 f"Failed to create repository link. Status code: {response.status_code}"
             )
+            raise Exception(msg)
     except Exception as e:
         logging.error(f"Error setting up repository links: {e!s}")
         raise
@@ -363,7 +358,8 @@ def main():
 
         if not verify_main():
             logging.error("Verification failed after setup")
-            raise Exception("Integration verification failed")
+            msg = "Integration verification failed"
+            raise Exception(msg)
 
         logging.info("Integration setup completed successfully!")
 

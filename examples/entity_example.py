@@ -12,7 +12,7 @@ This script demonstrates how to:
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
@@ -26,7 +26,7 @@ from database import SessionLocal, init_db  # noqa: E402
 from models.entity import Entity, EntityType  # noqa: E402
 
 
-def create_entity(session: Session, data: Dict[str, Any]) -> Entity:
+def create_entity(session: Session, data: dict[str, Any]) -> Entity:
     """Create a new entity from the given data.
 
     Args:
@@ -42,11 +42,13 @@ def create_entity(session: Session, data: Dict[str, Any]) -> Entity:
     try:
         # Extract and validate required fields
         if not data.get("name"):
-            raise ValueError("Name cannot be empty")
+            msg = "Name cannot be empty"
+            raise ValueError(msg)
         name = str(data["name"])
 
         if not data.get("entity_type"):
-            raise ValueError("Entity type cannot be empty")
+            msg = "Entity type cannot be empty"
+            raise ValueError(msg)
         entity_type = EntityType(str(data["entity_type"]))
 
         # Handle optional fields
@@ -70,10 +72,12 @@ def create_entity(session: Session, data: Dict[str, Any]) -> Entity:
 
     except KeyError as e:
         session.rollback()
-        raise ValueError(f"Missing required field: {e}") from e
+        msg = f"Missing required field: {e}"
+        raise ValueError(msg) from e
     except Exception as e:
         session.rollback()
-        raise ValueError(f"Failed to create entity: {e}") from e
+        msg = f"Failed to create entity: {e}"
+        raise ValueError(msg) from e
 
 
 def get_entity(session: Session, entity_id: int) -> Optional[Entity]:
@@ -107,7 +111,7 @@ def list_entities(
     entity_type: Optional[EntityType] = None,
     limit: int = 100,
     offset: int = 0,
-) -> List[Entity]:
+) -> list[Entity]:
     """List entities with optional filtering.
 
     Args:
@@ -126,7 +130,7 @@ def list_entities(
 
 
 def update_entity(
-    session: Session, entity_id: int, data: Dict[str, Any]
+    session: Session, entity_id: int, data: dict[str, Any]
 ) -> Optional[Entity]:
     """Update an entity with the given data.
 
@@ -149,13 +153,15 @@ def update_entity(
         # Update name if provided
         if "name" in data:
             if not data["name"]:
-                raise ValueError("Name cannot be empty")
+                msg = "Name cannot be empty"
+                raise ValueError(msg)
             entity.name = str(data["name"])
 
         # Update entity_type if provided
         if "entity_type" in data:
             if not data["entity_type"]:
-                raise ValueError("Entity type cannot be empty")
+                msg = "Entity type cannot be empty"
+                raise ValueError(msg)
             entity.entity_type = EntityType(str(data["entity_type"]))
 
         # Update description if provided
@@ -167,7 +173,8 @@ def update_entity(
         # Update metadata if provided
         if "metadata" in data and data["metadata"] is not None:
             if not isinstance(data["metadata"], dict):
-                raise ValueError("Metadata must be a dictionary")
+                msg = "Metadata must be a dictionary"
+                raise ValueError(msg)
             entity.metadata_ = data["metadata"]
 
         session.commit()
@@ -175,7 +182,8 @@ def update_entity(
 
     except Exception as e:
         session.rollback()
-        raise ValueError(f"Failed to update entity: {e}") from e
+        msg = f"Failed to update entity: {e}"
+        raise ValueError(msg) from e
 
 
 def delete_entity(session: Session, entity_id: int) -> bool:
@@ -198,7 +206,8 @@ def delete_entity(session: Session, entity_id: int) -> bool:
         return True
     except Exception as e:
         session.rollback()
-        raise RuntimeError(f"Failed to delete entity: {e}") from e
+        msg = f"Failed to delete entity: {e}"
+        raise RuntimeError(msg) from e
 
 
 def print_entity(entity: Entity) -> None:
@@ -213,13 +222,13 @@ def print_entity(entity: Entity) -> None:
 
     try:
         # Safely access entity attributes
-        entity_id = getattr(entity, "id", "N/A")
-        name = getattr(entity, "name", "Unnamed")
-        entity_type = getattr(entity, "entity_type", None)
-        description = getattr(entity, "description", None)
-        metadata_ = getattr(entity, "metadata_", None)
-        created_at = getattr(entity, "created_at", "N/A")
-        updated_at = getattr(entity, "updated_at", "N/A")
+        getattr(entity, "id", "N/A")
+        getattr(entity, "name", "Unnamed")
+        getattr(entity, "entity_type", None)
+        getattr(entity, "description", None)
+        getattr(entity, "metadata_", None)
+        getattr(entity, "created_at", "N/A")
+        getattr(entity, "updated_at", "N/A")
 
         # Format the output using direct attribute access since we know the types
         print("\n" + "=" * 50)

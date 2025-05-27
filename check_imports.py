@@ -1,7 +1,6 @@
 import ast
 import os
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 # Define the base directory
 BASE_DIR = Path(__file__).parent
@@ -31,7 +30,7 @@ def should_skip_path(path: Path) -> bool:
     return any(skip_dir in path_str.split(os.sep) for skip_dir in skip_dirs)
 
 
-def get_imports(file_path: Path) -> Set[str]:
+def get_imports(file_path: Path) -> set[str]:
     """Extract all imports from a Python file."""
     with open(file_path, encoding="utf-8") as f:
         try:
@@ -52,7 +51,7 @@ def get_imports(file_path: Path) -> Set[str]:
     return imports
 
 
-def check_imports() -> Tuple[Dict[str, List[str]], Set[str]]:
+def check_imports() -> tuple[dict[str, list[str]], set[str]]:
     """Check imports in all Python files."""
     # Get all Python files in the project
     python_files = []

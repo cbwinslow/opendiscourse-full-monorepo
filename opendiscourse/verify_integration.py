@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Dict
+import sys
+from typing import Any
 
 import requests
 import yaml
@@ -16,7 +17,7 @@ logging.basicConfig(
 )
 
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     """Load configuration from YAML file."""
     try:
         with open("integration_config.yaml") as f:
@@ -26,7 +27,7 @@ def load_config() -> Dict[str, Any]:
         raise
 
 
-def verify_jira_connection(config: Dict[str, Any]) -> bool:
+def verify_jira_connection(config: dict[str, Any]) -> bool:
     """Verify Jira connection."""
     try:
         headers = {
@@ -56,7 +57,7 @@ def verify_jira_connection(config: Dict[str, Any]) -> bool:
         return False
 
 
-def verify_github_connection(config: Dict[str, Any]) -> bool:
+def verify_github_connection(config: dict[str, Any]) -> bool:
     """Verify GitHub connection."""
     try:
         headers = {
@@ -88,7 +89,7 @@ def verify_github_connection(config: Dict[str, Any]) -> bool:
         return False
 
 
-def verify_bitbucket_connection(config: Dict[str, Any]) -> bool:
+def verify_bitbucket_connection(config: dict[str, Any]) -> bool:
     """Verify Bitbucket connection."""
     try:
         headers = {
@@ -120,7 +121,7 @@ def verify_bitbucket_connection(config: Dict[str, Any]) -> bool:
         return False
 
 
-def test_webhooks(config: Dict[str, Any]) -> bool:
+def test_webhooks(config: dict[str, Any]) -> bool:
     """Test all configured webhooks."""
     try:
         # Test Jira webhook
@@ -156,7 +157,7 @@ def test_webhooks(config: Dict[str, Any]) -> bool:
         return False
 
 
-def verify_repository_links(config: Dict[str, Any]) -> bool:
+def verify_repository_links(config: dict[str, Any]) -> bool:
     """Verify repository links between GitHub and Bitbucket."""
     try:
         headers = {
@@ -216,4 +217,4 @@ def main():
 
 
 if __name__ == "__main__":
-    exit(0 if main() else 1)
+    sys.exit(0 if main() else 1)

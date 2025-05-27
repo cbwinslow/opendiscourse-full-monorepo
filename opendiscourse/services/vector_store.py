@@ -1,15 +1,10 @@
 """Vector database implementation using ChromaDB and sentence-transformers."""
 
+from __future__ import annotations
+
 import logging
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, TypeVar, cast, final
-
-from typing_extensions import NotRequired, TypedDict  # noqa: F401
-
-# Type aliases
-DocumentScore = Tuple[Dict[str, str], float]
-DocumentMetadata = Dict[str, str]  # Enforce string values for metadata
+from typing import TypeVar, cast, final
 
 import torch
 from dotenv import load_dotenv
@@ -17,7 +12,11 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
-from typing_extensions import override
+from typing_extensions import NotRequired, TypedDict, override  # noqa: F401
+
+# Type aliases
+DocumentScore = tuple[dict[str, str], float]
+DocumentMetadata = dict[str, str]  # Enforce string values for metadata
 
 
 @final
@@ -33,7 +32,7 @@ class SentenceTransformerEmbeddings(Embeddings):
         )
 
     @override
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs.
 
         Args:
@@ -43,11 +42,12 @@ class SentenceTransformerEmbeddings(Embeddings):
             List of embeddings, one for each input text.
         """
         return cast(
-            List[List[float]], self.model.encode(texts, convert_to_numpy=True).tolist()
+            "list[list[float]]",
+            self.model.encode(texts, convert_to_numpy=True).tolist(),
         )
 
     @override
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Embed query text.
 
         Args:
@@ -57,7 +57,7 @@ class SentenceTransformerEmbeddings(Embeddings):
             The embedding vector for the input text.
         """
         return cast(
-            List[float], self.model.encode(text, convert_to_numpy=True).tolist()
+            "list[float]", self.model.encode(text, convert_to_numpy=True).tolist()
         )
 
 
@@ -87,17 +87,17 @@ class VectorDatabaseOperationError(VectorDatabaseError):
 
 
 class VectorDatabase:
-    """A vector database implementation using ChromaDB for document storage and retrieval.
+    """A vector database implementation using ChromaDB for document storage.
 
-    This class provides methods to add, search, and manage documents with their vector
-    embeddings. It uses sentence-transformers for generating embeddings and ChromaDB
-    for efficient similarity search.
+    This class provides methods to add, search, and manage documents with their
+    vector embeddings. It uses sentence-transformers for generating embeddings
+    and ChromaDB for efficient similarity search.
     """
 
     persist_directory: Path
-    embeddings: "SentenceTransformerEmbeddings"
+    embeddings: SentenceTransformerEmbeddings
     collection_name: str
-    _vector_store: Optional[Chroma] = None
+    _vector_store: Chroma | None = None
 
     @property
     def vector_store(self) -> Chroma:
@@ -108,7 +108,7 @@ class VectorDatabase:
                 embedding_function=self.embeddings,
                 persist_directory=str(self.persist_directory),
             )
-        return cast(Chroma, self._vector_store)
+        return cast("Chroma", self._vector_store)
 
     def __init__(
         self,
@@ -119,14 +119,15 @@ class VectorDatabase:
         """Initialize the VectorDatabase.
 
         Args:
-            embeddings_model: Name of the sentence transformer model to use for embeddings.
+            embeddings_model: Name of the sentence transformer model to use for
+                embeddings.
             collection_name: Name of the collection to store documents in.
             persist_directory: Directory to persist the database to.
         """
         self.persist_directory = Path(persist_directory)
         self.embeddings = SentenceTransformerEmbeddings(model_name=embeddings_model)
         self.collection_name = collection_name
-        self._vector_store: Optional[Chroma] = None
+        self._vector_store: Chroma | None = None
         self._ensure_initialized()
 
     def _ensure_initialized(self) -> None:
@@ -135,9 +136,9 @@ class VectorDatabase:
         Creates the persist directory if it doesn't exist.
         The vector store itself is lazily initialized when accessed.
         """
-        os.makedirs(self.persist_directory, exist_ok=True)
+        self.persist_directory.mkdir(parents=True, exist_ok=True)
 
-    def _chunk_text(self, content: str) -> List[str]:
+    def _chunk_text(self, content: str) -> list[str]:
         """Split text into chunks.
 
         Args:
@@ -152,7 +153,7 @@ class VectorDatabase:
         return text_splitter.split_text(content)
 
     def add_document(
-        self, document_id: int, content: str, metadata: Dict[str, str]
+        self, document_id: int, content: str, metadata: dict[str, str]
     ) -> None:
         """Add a document to the vector database.
 
@@ -165,43 +166,39 @@ class VectorDatabase:
             VectorDatabaseOperationError: If adding the document fails
         """
         if not content.strip():
-            raise VectorDatabaseOperationError("Document content cannot be empty")
+            error_msg = "Document content cannot be empty"
+            raise VectorDatabaseOperationError(error_msg)
 
         try:
-            # Split document into chunks
+            # Split the content into chunks
             chunks = self._chunk_text(content)
 
-            # Prepare documents and metadata
-            documents: List[str] = []
-            metadatas: List[Dict[str, str]] = []
-
+            # Add chunks to the vector store
             for i, chunk in enumerate(chunks):
-                documents.append(chunk)
-                metadatas.append(
-                    {
-                        "document_id": str(document_id),
-                        "chunk_index": str(i),
-                        "chunk_size": str(len(chunk)),
-                        **metadata,
-                    }
+                chunk_id = f"{document_id}_{i}"
+                chunk_metadata = {
+                    **metadata,
+                    "chunk_index": i,
+                    "document_id": str(document_id),
+                    "total_chunks": len(chunks),
+                }
+                self.vector_store.add_texts(
+                    texts=[chunk], metadatas=[chunk_metadata], ids=[chunk_id]
                 )
 
-            # Add to vector store
-            self.vector_store.add_texts(
-                texts=documents,
-                metadatas=metadatas,
-                ids=[f"{document_id}_{i}" for i in range(len(chunks))],
-            )
             logging.info("Added document %s with %d chunks", document_id, len(chunks))
 
         except Exception as e:
-            error_msg = "Failed to add document %s: %s"
-            logging.error(error_msg, document_id, e, exc_info=True)
-            raise VectorDatabaseOperationError(error_msg % (document_id, e)) from e
+            error_msg = f"Failed to add document {document_id}: {e!s}"
+            logging.error(error_msg)
+            raise VectorDatabaseOperationError(error_msg) from e
 
     def search(
-        self, query: str, k: int = 5, filter_dict: Optional[Dict[str, str]] = None
-    ) -> List[Tuple[Dict[str, str], float]]:
+        self,
+        query: str,
+        k: int = 5,
+        filter_dict: dict[str, str] | None = None,
+    ) -> list[tuple[dict[str, str], float]]:
         """Search for similar documents.
 
         Args:
@@ -216,200 +213,79 @@ class VectorDatabase:
             VectorDatabaseOperationError: If the search fails.
         """
         if not query.strip():
-            raise VectorDatabaseOperationError("Query cannot be empty")
+            error_msg = "Query cannot be empty"
+            raise VectorDatabaseOperationError(error_msg)
+
         try:
-            results = self.vector_store.similarity_search_with_score(
-                query=query, k=k, filter=filter_dict
-            )
-            # Convert Document objects to metadata dictionaries
-            return [
-                ({k: str(v) for k, v in doc.metadata.items()}, score)
-                for doc, score in results
-            ]
-        except Exception as e:
-            error_msg = "Search failed for query '%s': %s"
-            logging.error(error_msg, query, exc_info=True)
-            raise VectorDatabaseOperationError(error_msg % (query, e)) from e
-
-    def get_document_chunks(
-        self, document_id: int
-    ) -> List[Tuple[int, str, Dict[str, str]]]:
-        """
-        Retrieve all chunks for a specific document.
-
-        Args:
-            document_id: ID of the document to retrieve
-
-        Returns:
-            List of tuples containing (chunk_index, chunk_text, metadata)
-
-        Raises:
-            VectorDatabaseOperationError: If retrieval fails
-        """
-        try:
-            # Fetch all documents with matching document_id in metadata
-            docs = self.vector_store.get(where={"document_id": str(document_id)})
-
-            # Sort chunks by index
-            metadatas = cast(List[Dict[str, str]], docs.get("metadatas", []))
-            documents = cast(List[str], docs.get("documents", []))
-
-            # Create list of (index, document, metadata) tuples
-            chunks_data = [
-                (int(meta.get("chunk_index", "0")), doc, meta)
-                for meta, doc in zip(metadatas, documents)
-            ]
-
-            # Sort by chunk index
-            chunks = sorted(chunks_data, key=lambda x: x[0])
-
-            logging.info(
-                "Retrieved %d chunks for document %s", len(chunks), document_id
-            )
-            return chunks
-
-        except Exception as e:
-            error_msg = "Failed to get chunks for document %s: %s"
-            logging.error(error_msg, document_id, e, exc_info=True)
-            raise VectorDatabaseOperationError(error_msg % (document_id, e)) from e
-
-    def delete_documents(self, ids: Optional[List[str]] = None) -> None:
-        """Delete documents from the vector store.
-
-        Args:
-            ids: Optional list of document IDs to delete. If None, all documents will be deleted.
-
-        Raises:
-            VectorDatabaseOperationError: If the deletion fails.
-        """
-        try:
-            if ids is None:
-                # Delete all documents by getting all document IDs first
-                all_docs = self.vector_store.get(include=[])
-                doc_ids: List[str] = all_docs.get("ids", [])  # type: ignore[assignment]
-                if doc_ids:
-                    self.vector_store.delete(ids=doc_ids)
-                    logging.info(
-                        "Deleted all %d documents from the vector store.", len(doc_ids)
-                    )
-                else:
-                    logging.info("No documents to delete.")
-            elif ids:
-                self.vector_store.delete(ids=ids)
-                logging.info("Deleted %d documents from the vector store.", len(ids))
-        except Exception as e:
-            error_msg = "Failed to delete documents: %s"
-            logging.error(error_msg, str(e), exc_info=True)
-            raise VectorDatabaseOperationError(error_msg % str(e)) from e
-
-        # Prepare documents and metadata
-        documents: List[str] = []
-        metadatas: List[Dict[str, str]] = []
-
-        for i, chunk in enumerate(chunks):
-            documents.append(chunk)
-            metadatas.append(
-                {
-                    "document_id": str(document_id),
-                    "chunk_index": str(i),
-                    "chunk_size": str(len(chunk)),
-                    **metadata,
+            # Convert filter_dict to Chroma's filter format if provided
+            filter_condition = None
+            if filter_dict:
+                filter_condition = {
+                    "$and": [{k: {"$eq": v}} for k, v in filter_dict.items()]
                 }
-            )
 
-        try:
-            # Add to vector store
-            _ = self.vector_store.add_texts(
-                texts=documents,
-                metadatas=metadatas,
-                ids=[f"{document_id}_{i}" for i in range(len(chunks))],
-            )
-            logging.info("Added document %s with %d chunks", document_id, len(chunks))
-
-        except Exception as e:
-            error_msg = "Failed to add document %s: %s"
-            logging.error(error_msg, document_id, e, exc_info=True)
-            raise VectorDatabaseOperationError(error_msg % (document_id, e)) from e
-
-    def search(
-        self, query: str, k: int = 5, filter_dict: Optional[Dict[str, str]] = None
-    ) -> List[Tuple[Dict[str, str], float]]:
-        """Search for similar documents.
-
-        Args:
-            query: The search query string.
-            k: Number of results to return.
-            filter_dict: Optional dictionary of filters to apply to the search.
-
-        Returns:
-            List of tuples containing (document_metadata, score) pairs.
-
-        Raises:
-            VectorDatabaseOperationError: If the search fails.
-        """
-        if not query.strip():
-            raise VectorDatabaseOperationError("Query cannot be empty")
-        try:
             results = self.vector_store.similarity_search_with_score(
-                query=query, k=k, filter=filter_dict
+                query=query, k=k, filter=filter_condition
             )
+
             # Convert Document objects to metadata dictionaries
             return [
-                ({k: str(v) for k, v in doc.metadata.items()}, score)
+                ({"text": doc.page_content, **doc.metadata}, score)
                 for doc, score in results
             ]
+
         except Exception as e:
-            error_msg = "Search failed for query '%s': %s"
-            logging.error(error_msg, query, exc_info=True)
-            raise VectorDatabaseOperationError(error_msg % (query, e)) from e
+            error_msg = f"Search failed: {e!s}"
+            logging.exception("Search operation failed")
+            raise VectorDatabaseOperationError(error_msg) from e
 
     def get_document_chunks(
         self, document_id: int
-    ) -> List[Tuple[int, str, Dict[str, str]]]:
-        """
-        Retrieve all chunks for a specific document.
+    ) -> list[tuple[int, str, dict[str, str]]]:
+        """Retrieve all chunks for a specific document.
 
         Args:
-            document_id: ID of the document to retrieve
+            document_id: ID of the document to retrieve.
 
         Returns:
-            List of tuples containing (chunk_index, chunk_text, metadata)
+            List of tuples containing (chunk_index, chunk_text, metadata).
 
         Raises:
-            VectorDatabaseOperationError: If retrieval fails
+            VectorDatabaseOperationError: If retrieval fails.
         """
         try:
-            # Fetch all documents with matching document_id in metadata
-            docs = self.vector_store.get(where={"document_id": str(document_id)})
-
-            # Sort chunks by index
-            metadatas = cast(List[Dict[str, str]], docs.get("metadatas", []))
-            documents = cast(List[str], docs.get("documents", []))
-
-            # Create list of (index, document, metadata) tuples
-            chunks_data = [
-                (int(meta.get("chunk_index", "0")), doc, meta)
-                for meta, doc in zip(metadatas, documents)
-            ]
-
-            # Sort by chunk index
-            chunks = sorted(chunks_data, key=lambda x: x[0])
-
-            logging.info(
-                "Retrieved %d chunks for document %s", len(chunks), document_id
+            # Query for all chunks of the document
+            results = self.vector_store.similarity_search(
+                query="",  # Empty query to get all documents
+                filter={"document_id": str(document_id)},
+                k=1000,  # Arbitrary large number to get all chunks
             )
+
+            # Extract and sort chunks by chunk_index
+            chunks = []
+            for doc in results:
+                try:
+                    chunk_index = int(doc.metadata.get("chunk_index", "0"))
+                    chunks.append((chunk_index, doc.page_content, doc.metadata))
+                except (ValueError, AttributeError) as e:
+                    logging.warning("Invalid chunk metadata: %s", str(e))
+                    continue
+
+            # Sort by chunk_index
+            chunks.sort(key=lambda x: x[0])
             return chunks
 
         except Exception as e:
-            error_msg = "Failed to get chunks for document %s: %s"
-            logging.error(error_msg, document_id, e, exc_info=True)
-            raise VectorDatabaseOperationError(error_msg % (document_id, e)) from e
+            error_msg = f"Failed to retrieve chunks for document {document_id}: {e!s}"
+            logging.exception("Failed to retrieve document chunks")
+            raise VectorDatabaseOperationError(error_msg) from e
 
-    def delete_documents(self, ids: Optional[List[str]] = None) -> None:
+    def delete_documents(self, ids: list[str] | None = None) -> None:
         """Delete documents from the vector store.
 
         Args:
-            ids: Optional list of document IDs to delete. If None, all documents will be deleted.
+            ids: Optional list of document IDs to delete. If None, all documents
+                will be deleted.
 
         Raises:
             VectorDatabaseOperationError: If the deletion fails.
@@ -418,7 +294,7 @@ class VectorDatabase:
             if ids is None:
                 # Delete all documents by getting all document IDs first
                 all_docs = self.vector_store.get(include=[])
-                doc_ids: List[str] = all_docs.get("ids", [])  # type: ignore[assignment]
+                doc_ids: list[str] = all_docs.get("ids", [])  # type: ignore[assignment]
                 if doc_ids:
                     self.vector_store.delete(ids=doc_ids)
                     logging.info(
@@ -430,9 +306,9 @@ class VectorDatabase:
                 self.vector_store.delete(ids=ids)
                 logging.info("Deleted %d documents from the vector store.", len(ids))
         except Exception as e:
-            error_msg = "Failed to delete documents: %s"
-            logging.error(error_msg, str(e), exc_info=True)
-            raise VectorDatabaseOperationError(error_msg % str(e)) from e
+            error_msg = f"Failed to delete documents: {e!s}"
+            logging.exception("Failed to delete documents")
+            raise VectorDatabaseOperationError(error_msg) from e
 
     def persist(self) -> None:
         """Persist the vector database to disk.
@@ -448,7 +324,7 @@ class VectorDatabase:
                 logging.info("Vector database persisted to disk")
         except Exception as e:
             error_msg = f"Failed to persist vector database: {e!s}"
-            logging.error(error_msg)
+            logging.exception("Failed to persist vector database")
             raise VectorDatabaseOperationError(error_msg) from e
 
 

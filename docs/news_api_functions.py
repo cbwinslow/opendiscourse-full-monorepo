@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from newsapi import NewsApiClient
 
@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 # Load API key from environment variable
 NEWSAPI_KEY = os.getenv("NEWS_API_KEY")
 if not NEWSAPI_KEY:
-    raise ValueError("NEWS_API_KEY environment variable is not set")
+    msg = "NEWS_API_KEY environment variable is not set"
+    raise ValueError(msg)
 
 # Initialize NewsAPI client
 newsapi = NewsApiClient(api_key=NEWSAPI_KEY)
@@ -24,7 +25,7 @@ def get_top_headlines_client(
     sources: Optional[str] = None,
     query: Optional[str] = None,
     page_size: int = 20,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Fetches top headlines using the NewsAPI client.
 
     Args:
@@ -70,7 +71,7 @@ def search_articles_client(
     language: str = "en",
     sort_by: str = "publishedAt",
     page_size: int = 20,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Searches for articles using the NewsAPI client.
 
     Args:
@@ -123,7 +124,7 @@ def search_articles_client(
         return []
 
 
-def display_articles(articles: List[Dict[str, Any]], max_articles: int = 5) -> None:
+def display_articles(articles: list[dict[str, Any]], max_articles: int = 5) -> None:
     """Display article details in a readable format.
 
     Args:
@@ -131,7 +132,7 @@ def display_articles(articles: List[Dict[str, Any]], max_articles: int = 5) -> N
         max_articles: Maximum number of articles to show
     """
     """Prints article details in a readable format.
-    
+
     Args:
         articles: List of article dictionaries
         max_articles: Maximum number of articles to display
