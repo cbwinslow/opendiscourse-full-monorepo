@@ -1,48 +1,62 @@
+"""Document processor for GovInfo documents.
+
+This module provides functionality to process, validate, and store documents
+from the GovInfo API, including bills, regulations, and other government documents.
+"""
+
+# Standard library imports
 import difflib
 import hashlib
 import json
 import logging
 import os
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, TypedDict, Union
 from xml.etree import ElementTree as ET
 
+# Third-party imports
 import psycopg2
 import requests
 import xmlschema
 from dotenv import load_dotenv
+from psycopg2.extensions import connection as PgConnection
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("govinfo_document_processor.log"),
-        logging.StreamHandler(),
-    ],
-)
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
-# Define collection types
-COLLECTION_TYPES = {
-    "BILLS": "Bills",
-    "CFR": "Code of Federal Regulations",
-    "FR": "Federal Register",
-    "CHRG": "Committee Hearings",
+# Type aliases
+JsonDict = Dict[str, Any]
+ValidationResult = Dict[str, Union[bool, List[str], str]]
+
+# Collection types
+class CollectionType:
+    """Supported document collection types."""
+    BILLS = "BILLS"
+    CFR = "CFR"
+    FEDERAL_REGISTER = "FR"
+    COMMITTEE_HEARINGS = "CHRG"
+
+# Collection type metadata
+COLLECTION_TYPES: Dict[str, str] = {
+    CollectionType.BILLS: "Bills",
+    CollectionType.CFR: "Code of Federal Regulations",
+    CollectionType.FEDERAL_REGISTER: "Federal Register",
+    CollectionType.COMMITTEE_HEARINGS: "Committee Hearings",
 }
 
 # Schema validation
-SCHEMA_VERSIONS = {
-    "BILLS": "uslm-2.1.0.xsd",
-    "CFR": "uslm-2.1.0.xsd",
-    "FR": "uslm-2.1.0.xsd",
-    "CHRG": "uslm-2.1.0.xsd",
+SCHEMA_VERSIONS: Dict[str, str] = {
+    CollectionType.BILLS: "uslm-2.1.0.xsd",
+    CollectionType.CFR: "uslm-2.1.0.xsd",
+    CollectionType.FEDERAL_REGISTER: "uslm-2.1.0.xsd",
+    CollectionType.COMMITTEE_HEARINGS: "uslm-2.1.0.xsd",
 }
-
 
 # Document status constants
 class DocumentStatus:
+    """Document processing statuses."""
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -51,72 +65,162 @@ class DocumentStatus:
     VALID = "valid"
     INVALID = "invalid"
 
-
 # Error types
 class ErrorType:
+    """Error types for document processing."""
     SCHEMA_VALIDATION = "schema_validation"
     METADATA_VALIDATION = "metadata_validation"
     VERSION_CONFLICT = "version_conflict"
     PROCESSING_ERROR = "processing_error"
 
-
-def get_db_connection():
-    """Get a database connection."""
-    return psycopg2.connect(
-        dbname=os.getenv("DB_NAME", "news_aggregator"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD", "your_password"),
-        host=os.getenv("DB_HOST", "localhost"),
-        port=os.getenv("DB_PORT", "5432"),
-    )
-
-
-def validate_schema(content: str, collection: str) -> dict[str, Any]:
-    """Validate XML content against USLM schema."""
+def get_db_connection() -> PgConnection:
+    """Get a database connection.
+    
+    Returns:
+        A connection to the PostgreSQL database.
+        
+    Raises:
+        psycopg2.OperationalError: If the connection to the database fails.
+    """
     try:
-        schema_path = f"/media/cbwinslow/CBWHDD/opendiscourse/docs/ref/uslm/{SCHEMA_VERSIONS[collection]}"
+        return psycopg2.connect(
+            dbname=os.getenv("DB_NAME", "opendiscourse"),
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", ""),
+            host=os.getenv("DB_HOST", "localhost"),
+            port=os.getenv("DB_PORT", "5432"),
+        )
+    except psycopg2.Error as e:
+        logger.error("Failed to connect to database: %s", str(e))
+        raise
+
+
+def validate_schema(content: str, collection: str) -> ValidationResult:
+    """Validate XML content against USLM schema.
+    
+    Args:
+        content: The XML content to validate.
+        collection: The collection type (e.g., 'BILLS', 'CFR').
+        
+    Returns:
+        A dictionary containing:
+        - is_valid: Boolean indicating if validation passed
+        - errors: List of error messages
+        - schema_version: Version of the schema used for validation
+    """
+    try:
+        schema_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "..", "docs", "ref", "uslm",
+            SCHEMA_VERSIONS.get(collection, "uslm-2.1.0.xsd")
+        )
+        
+        if not os.path.exists(schema_path):
+            error_msg = f"Schema file not found: {schema_path}"
+            logger.error(error_msg)
+            return {
+                "is_valid": False,
+                "errors": [error_msg],
+                "schema_version": "unknown",
+            }
+            
         schema = xmlschema.XMLSchema(schema_path)
         schema.validate(content)
 
         return {
             "is_valid": True,
             "errors": [],
-            "schema_version": SCHEMA_VERSIONS[collection],
+            "schema_version": SCHEMA_VERSIONS.get(collection, "unknown"),
         }
-    except Exception as e:
+        
+    except xmlschema.XMLSchemaException as e:
+        logger.error("Schema validation error: %s", str(e))
         return {
             "is_valid": False,
-            "errors": [str(e)],
+            "errors": [f"Schema validation failed: {str(e)}"],
+            "schema_version": SCHEMA_VERSIONS.get(collection, "unknown"),
+        }
+    except Exception as e:  # pylint: disable=broad-except
+        logger.exception("Unexpected error during schema validation")
+        return {
+            "is_valid": False,
+            "errors": [f"Unexpected error during validation: {str(e)}"],
             "schema_version": SCHEMA_VERSIONS.get(collection, "unknown"),
         }
 
 
-def validate_metadata(metadata: dict[str, Any], collection: str) -> dict[str, Any]:
-    """Validate document metadata."""
+def validate_metadata(metadata: JsonDict, collection: str) -> ValidationResult:
+    """Validate document metadata against required fields for the collection.
+    
+    Args:
+        metadata: Dictionary containing document metadata.
+        collection: The collection type (e.g., 'BILLS', 'CFR').
+        
+    Returns:
+        A dictionary containing:
+        - is_valid: Boolean indicating if all required fields are present
+        - errors: List of error messages for missing fields
+    """
+    # Define required fields for each collection type
     required_fields = {
-        "BILLS": ["title", "version", "document_id"],
-        "CFR": ["title", "version", "document_id"],
-        "FR": ["title", "version", "document_id"],
-        "CHRG": ["title", "version", "document_id"],
+        CollectionType.BILLS: ["title", "version", "document_id"],
+        CollectionType.CFR: ["title", "version", "document_id"],
+        CollectionType.FEDERAL_REGISTER: ["title", "version", "document_id"],
+        CollectionType.COMMITTEE_HEARINGS: ["title", "version", "document_id"],
     }
 
-    errors = []
+    errors: List[str] = []
+    
+    # Check for missing required fields
     for field in required_fields.get(collection, []):
         if not metadata.get(field):
             errors.append(f"Missing required field: {field}")
-
-    return {"is_valid": len(errors) == 0, "errors": errors}
+    
+    # Check for empty values in required fields
+    for field, value in metadata.items():
+        if field in required_fields.get(collection, []) and not value:
+            errors.append(f"Empty value for required field: {field}")
+    
+    return {
+        "is_valid": len(errors) == 0, 
+        "errors": errors,
+        "schema_version": "n/a"  # For consistency with validate_schema return type
+    }
 
 
 def calculate_content_hash(content: str) -> str:
-    """Calculate hash of content for version tracking."""
-    return hashlib.sha256(content.encode()).hexdigest()
+    """Calculate a SHA-256 hash of the content for version tracking.
+    
+    Args:
+        content: The content to hash.
+        
+    Returns:
+        A hexadecimal string representing the SHA-256 hash of the content.
+    """
+    try:
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Failed to calculate content hash: %s", str(e))
+        raise ValueError("Failed to calculate content hash") from e
 
 
 def find_previous_version(
-    doc_id: str, collection: str, conn: psycopg2.extensions.connection
-) -> Optional[dict[str, Any]]:
-    """Find previous version of a document."""
+    doc_id: str, collection: str, conn: PgConnection
+) -> Optional[Dict[str, Any]]:
+    """Find the most recent previous version of a document in the database.
+    
+    Args:
+        doc_id: The document identifier.
+        collection: The collection type (e.g., 'BILLS', 'CFR').
+        conn: An active database connection.
+        
+    Returns:
+        A dictionary containing the previous version's id, content, and version,
+        or None if no previous version exists.
+        
+    Raises:
+        psycopg2.DatabaseError: If there's an error executing the database query.
+    """
     cursor = conn.cursor()
     try:
         cursor.execute(
@@ -125,110 +229,153 @@ def find_previous_version(
             FROM documents
             WHERE collection_type = %s
             AND document_id = %s
-            AND status = 'completed'
+            AND status = %s
             ORDER BY processed_at DESC
             LIMIT 1
-        """,
-            (collection, doc_id),
+            """,
+            (collection, doc_id, DocumentStatus.COMPLETED),
         )
 
-        result = cursor.fetchone()
-        if result:
-            return {"id": result[0], "content": result[1], "version": result[2]}
+        if result := cursor.fetchone():
+            return {
+                "id": result[0],
+                "content": result[1],
+                "version": result[2],
+            }
         return None
+    except psycopg2.Error as e:
+        logger.error("Database error finding previous version: %s", str(e))
+        raise
     finally:
         cursor.close()
 
 
+class ProcessedDocument(TypedDict):
+    """Type definition for a processed document."""
+    doc_id: str
+    content: str
+    metadata: JsonDict
+    schema_validation: ValidationResult
+    metadata_validation: ValidationResult
+    content_hash: str
+    previous_version: Optional[Dict[str, Any]]
+    status: str
+    collection: str
+
+
 def process_uslm(
-    doc_id: str, content: str, collection: str
-) -> Optional[dict[str, Any]]:
-    """Process a USLM document with all validation and version tracking."""
+    doc_id: str, content: str, collection: str, conn: Optional[PgConnection] = None
+) -> Optional[ProcessedDocument]:
+    """Process a USLM document with all validation and version tracking.
+    
+    Args:
+        doc_id: The document identifier.
+        content: The XML content of the document.
+        collection: The collection type (e.g., 'BILLS', 'CFR').
+        conn: Optional database connection. If not provided, a new one will be created.
+        
+    Returns:
+        A dictionary containing the processed document data or None if processing fails.
+        
+    Raises:
+        ValueError: If the document content is empty or invalid.
+        ET.ParseError: If the XML content is malformed.
+    """
+    if not content.strip():
+        raise ValueError("Document content cannot be empty")
+    
+    close_conn = False
+    if conn is None:
+        conn = get_db_connection()
+        close_conn = True
+    
     try:
         # Parse XML content
-        root = ET.fromstring(content)
+        try:
+            root = ET.fromstring(content)
+        except ET.ParseError as e:
+            logger.error("Failed to parse XML content for document %s: %s", doc_id, str(e))
+            raise
 
-        # Extract metadata
-        metadata = {
+        # Extract metadata with proper error handling
+        metadata: JsonDict = {
             "type": "uslm",
             "collection": collection,
-            "title": (
-                root.find(".//title").text if root.find(".//title") is not None else ""
-            ),
-            "date": (
-                root.find(".//date").text if root.find(".//date") is not None else ""
-            ),
-            "version": (
-                root.find(".//version").text
-                if root.find(".//version") is not None
-                else ""
-            ),
-            "document_id": (
-                root.find(".//documentId").text
-                if root.find(".//documentId") is not None
-                else ""
-            ),
+            "title": getattr(root.find(".//title"), 'text', ''),
+            "date": getattr(root.find(".//date"), 'text', ''),
+            "version": getattr(root.find(".//version"), 'text', ''),
+            "document_id": getattr(root.find(".//documentId"), 'text', doc_id)
         }
 
         # Validate schema
         schema_validation = validate_schema(content, collection)
         if not schema_validation["is_valid"]:
-            logging.error(
-                f"Schema validation failed for {doc_id}: {schema_validation['errors']}"
+            logger.error(
+                "Schema validation failed for %s: %s",
+                doc_id,
+                "; ".join(schema_validation["errors"])
             )
             return None
 
         # Validate metadata
         metadata_validation = validate_metadata(metadata, collection)
         if not metadata_validation["is_valid"]:
-            logging.error(
-                f"Metadata validation failed for {doc_id}: {metadata_validation['errors']}"
+            logger.error(
+                "Metadata validation failed for %s: %s",
+                doc_id,
+                "; ".join(metadata_validation["errors"])
             )
             return None
 
         # Extract main content
-        text = ""
-        for section in root.findall(".//section"):
-            text += ET.tostring(section, encoding="unicode")
+        text = "".join(
+            ET.tostring(section, encoding="unicode", method="xml")
+            for section in root.findall(".//section")
+        )
 
         # Calculate content hash for version tracking
         content_hash = calculate_content_hash(text)
 
         # Check for previous version
-        conn = get_db_connection()
         previous_version = find_previous_version(doc_id, collection, conn)
 
-        # Compare with previous version if exists
-        if previous_version:
-            previous_content_hash = calculate_content_hash(previous_version["content"])
-            if content_hash == previous_content_hash:
-                logging.info(
-                    f"Document {doc_id} has not changed since version {previous_version['version']}"
-                )
-                return None
-
-            # Calculate changes
-            diff = difflib.unified_diff(
-                previous_version["content"].splitlines(), text.splitlines()
-            )
-            changes = list(diff)
-
-            metadata["changes"] = changes
-            metadata["previous_version"] = previous_version["version"]
-
-        return {
+        # Prepare result
+        result: ProcessedDocument = {
+            "doc_id": doc_id,
             "content": text,
             "metadata": metadata,
             "schema_validation": schema_validation,
             "metadata_validation": metadata_validation,
-            "status": DocumentStatus.COMPLETED,
+            "content_hash": content_hash,
+            "previous_version": previous_version,
+            "status": DocumentStatus.PENDING,
+            "collection": collection,
         }
-    except Exception as e:
-        logging.error(f"Error processing USLM document {doc_id}: {e!s}")
+
+        # Check for changes if previous version exists
+        if previous_version:
+            previous_content_hash = calculate_content_hash(previous_version["content"])
+            if content_hash == previous_content_hash:
+                logger.info(
+                    "Document %s has not changed, skipping update", doc_id
+                )
+                result["status"] = DocumentStatus.COMPLETED
+            else:
+                logger.info(
+                    "Document %s has changed, update required", doc_id
+                )
+        
+        return result
+        
+    except Exception as e:  # pylint: disable=broad-except
+        logger.exception("Error processing document %s: %s", doc_id, str(e))
         return None
     finally:
-        if "conn" in locals():
-            conn.close()
+        if close_conn and conn is not None:
+            try:
+                conn.close()
+            except Exception:  # pylint: disable=broad-except
+                logger.warning("Failed to close database connection")
 
 
 def process_bill(doc_id, content):

@@ -1,42 +1,119 @@
 # OpenDiscourse Windsurf Rules
+
 # This file guides the AI assistant in generating code that adheres to our standards
 
-# Core Rules
-- Always follow PEP 8 style guide
+## Core Principles
+
+- Follow PEP 8 style guide strictly
 - Use type hints for all function parameters and return values
 - Document all public APIs with Google-style docstrings
-- Include comprehensive error handling
-- Write unit tests for new functionality
+- Implement comprehensive error handling
+- Write unit tests for all new functionality
+- Maintain backward compatibility
+- Prioritize security in all implementations
 
-# File Structure
+## Code Organization
+
 - Keep files under 500 lines
-- Split large files into smaller modules
+- Split large files into smaller, focused modules
 - Use `__init__.py` to define public API
+- Group related functionality together
+- Maintain a clean and consistent project structure
 
-# Import Order
-1. Standard library imports
-2. Third-party imports
-3. Local application imports
+## Type Hints
 
-# Type Hints
-- Use Python 3.9+ type hints (list[Type], dict[Key, Value])
-- Define custom types using TypeVar when needed
-- Use Optional[Type] for nullable values
+- Use Python 3.10+ type hints (e.g., `list[Type]`, `dict[Key, Value]`)
+- Use `X | Y` for union types (Python 3.10+)
+- Use `Optional[Type]` or `Type | None` for nullable values
+- Define custom types using `TypeVar` when needed
+- Use `Final` for constants
+- Use `Literal` for string/enum-like types
+- Use `TypedDict` for dictionary value types
 
-# Error Handling
-- Create specific exception classes
+## Error Handling
+
+- Create specific exception classes that inherit from custom base exceptions
 - Include context in error messages
 - Use try/except blocks judiciously
 - Never use bare except clauses
+- Log errors with appropriate log levels
+- Use custom exception hierarchies for different error types
 
-# Documentation
-- Document all public APIs
-- Include Args, Returns, and Raises in docstrings
+## Documentation
+
+- Document all public APIs with Google-style docstrings
+- Include the following sections in docstrings:
+  - One-line description
+  - Extended description (if needed)
+  - Args: Parameter descriptions with types
+  - Returns: Return value description with type
+  - Raises: Exceptions that may be raised
+  - Examples: Usage examples for complex functions
 - Keep docstrings up-to-date with code changes
-- Include examples for complex functions
+- Include type information in docstrings for complex types
 
-# Testing
+## Testing
+
 - Write unit tests for all new functionality
-- Aim for high test coverage
+- Aim for at least 80% test coverage
 - Test edge cases and error conditions
-- Use fixtures and parameterized tests where appropriate
+- Use pytest fixtures for test dependencies
+- Use parameterized tests for similar test cases
+- Mock external dependencies in unit tests
+- Write integration tests for critical paths
+
+## Performance
+
+- Optimize database queries
+- Use appropriate data structures
+- Be mindful of memory usage
+- Implement proper caching where needed
+- Profile before optimizing
+
+## Security
+
+- Never hardcode secrets
+- Use environment variables for configuration
+- Validate all inputs
+- Sanitize outputs
+- Follow the principle of least privilege
+
+## Git Workflow
+
+- Write clear, concise commit messages
+- Keep commits focused on a single logical change
+- Use feature branches for new development
+- Rebase before merging
+- Write meaningful PR descriptions
+
+## Pre-commit Hooks
+
+- Run pre-commit hooks before committing
+- Fix all linter errors before committing
+- Ensure all tests pass before pushing
+- Keep pre-commit configuration up to date
+
+## Code Review Guidelines
+
+- Review for code quality, not just functionality
+- Check for security vulnerabilities
+- Verify error handling
+- Ensure documentation is complete
+- Check test coverage
+- Look for potential performance issues
+
+## Dependencies
+
+- Keep dependencies up to date
+- Pin dependency versions
+- Document all dependencies
+- Audit third-party packages
+- Minimize dependencies
+
+## Logging
+
+- Use appropriate log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- Include structured data in logs
+- Follow a consistent log format
+- Don't log sensitive information
+- Use contextual logging when possible

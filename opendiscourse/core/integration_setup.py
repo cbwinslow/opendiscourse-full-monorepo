@@ -5,11 +5,7 @@ import requests
 import yaml
 from atlassian import Bitbucket, Jira
 from github import Github
-from integration_constants import (
-    BACKOFF_FACTOR,
-    MAX_RETRIES,
-    RETRY_DELAY_SECONDS,
-)
+from integration_constants import BACKOFF_FACTOR, MAX_RETRIES, RETRY_DELAY_SECONDS
 from retry_decorator import retry
 
 # Set up logging

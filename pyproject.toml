@@ -5,151 +5,48 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "opendiscourse"
 version = "0.1.0"
-description = "OpenDiscourse - A platform for open discourse analysis"
+description = "OpenDiscourse - A platform for analyzing political discourse"
 readme = "README.md"
-requires-python = ">=3.9"
-license = {text = "MIT"}
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
 authors = [
-    {name = "OpenDiscourse Team", email = "team@opendiscourse.org"},
+    {name = "OpenDiscourse Team", email = "team@opendiscourse.org"}
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-    "python-dotenv>=1.0.0",
-    "pydantic>=1.10.0",
-    "fastapi>=0.95.0",
-    "uvicorn>=0.21.0",
     "sqlalchemy>=2.0.0",
-    "alembic>=1.10.0",
-    "pytest>=7.3.0",
-    "pytest-cov>=4.0.0",
-    "black>=23.3.0",
-    "ruff>=0.0.275",
-    "mypy>=1.3.0",
+    "pydantic>=2.0.0"
 ]
 
 [project.optional-dependencies]
 dev = [
-    "ipython>=8.0.0",
-    "jupyter>=1.0.0",
-    "pytest-xdist>=3.2.0",
-    "pre-commit>=3.2.0",
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.0.275",
+    "pre-commit>=3.0.0",
+    "ipython>=8.0.0"
 ]
 
 docs = [
-    "sphinx>=6.0.0",
-    "sphinx-rtd-theme>=1.2.0",
-    "sphinx-autodoc-typehints>=1.22.0",
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=0.5.0"
 ]
 
 [tool.black]
 line-length = 88
-target-version = ['py39']
+target-version = ["py38"]
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 88
-target-version = "py39"
-select = [
-    "E",   # pycodestyle errors
-    "F",   # pyflakes
-    "I",   # isort
-    "C",   # flake8-comprehensions
-    "B",   # flake8-bugbear
-    "UP",  # pyupgrade
-    "N",   # pep8-naming
-    "PL",  # pylint
-    "A",   # flake8-builtins
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "DTZ", # flake8-datetimez
-    "EM",  # flake8-errmsg
-    "FBT", # flake8-boolean-trap
-    "ISC", # flake8-implicit-str-concat
-    "ICN", # flake8-import-conventions
-    "G",   # flake8-logging-format
-    "INP", # flake8-no-pep420
-    "PTH", # flake8-use-pathlib
-    "RSE", # flake8-raise
-    "RET", # flake8-return
-    "SLF", # flake8-self
-    "SLOT", # flake8-slots
-    "TCH", # flake8-type-checking
-    "T10", # flake8-debugger
-    "T20", # flake8-print
-    "TID", # flake8-tidy-imports
-    "UP",  # pyupgrade
-    "W",   # pycodestyle warnings
-    "YTT", # flake8-2020
-]
-fixable = ["ALL"]
-unfixable = ["T20"]  # Don't fix print statements
+target-version = "py38"
+select = ["E", "F", "I"]  # Basic error checking
+unfixable = []
 
-[tool.ruff.per-file-ignores]
-"tests/*" = [
-    "S101",  # Allow use of assert in tests
-    "PLR2004", # Allow magic numbers in tests
-    "S101",   # Allow asserts in tests
-    "PLR0913", # Allow too many arguments in test functions
-    "PLR0915"  # Allow too many statements in test functions
-]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
-python_classes = ["Test*"]
-addopts = "-v --cov=opendiscourse --cov-report=term-missing --cov-report=xml"
-log_cli = true
-log_cli_level = "INFO"
-log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
-log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-
-[tool.coverage.run]
-source = ["opendiscourse"]
-omit = ["tests/*", "**/__init__.py"]
-branch = true
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise NotImplementedError",
-    "if __name__ == '__main__'",
-    "pass",
-    "raise ImportError",
-    "@.*def"
-]
-
-[tool.mypy]
-python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-disallow_untyped_defs = false
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["opendiscourse*"]
-namespaces = false
-
-[tool.setuptools.package-data]
-"*" = ["py.typed"]
+[tool.ruff.isort]
+known-first-party = ["opendiscourse"]

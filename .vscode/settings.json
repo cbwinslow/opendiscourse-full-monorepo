@@ -1,31 +1,31 @@
 {
+    // Python Configuration
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": false,
-    "python.linting.flake8Enabled": false,
     "python.formatting.provider": "black",
-    "python.analysis.typeCheckingMode": "basic",
-    "python.analysis.autoImportCompletions": true,
-    "python.analysis.autoSearchPaths": true,
-    "python.analysis.diagnosticMode": "workspace",
-    "python.analysis.inlayHints.variableTypes": true,
+    "python.analysis.typeCheckingMode": "off",
     
+    // Editor Configuration
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "ms-python.python",
     "editor.codeActionsOnSave": {
-        "source.organizeImports": true,
-        "source.fixAll": true
+        "source.organizeImports": "explicit"
     },
     "editor.tabSize": 4,
     "editor.insertSpaces": true,
     "editor.rulers": [88],
     "editor.detectIndentation": false,
     
+    // Files
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
-    "files.autoSave": "onFocusChange",
     
+    // Language-specific settings
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"
-    }
+    },
+    
+    // Disable spell checking by default
+    "cSpell.enabled": false
 }
