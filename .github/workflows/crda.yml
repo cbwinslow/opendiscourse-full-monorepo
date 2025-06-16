@@ -44,13 +44,8 @@ name: CRDA Scan
 
 # Controls when the workflow will run
 on:
-  # TODO: Customize trigger events based on your DevSecOps processes
-  #
-  # This workflow is made to run with OpenShift starter workflow
-  # https://github.com/actions/starter-workflows/blob/main/deployments/openshift.yml
-  # However, if you want to run this workflow as a standalone workflow, please
-  # uncomment the 'push' trigger below and configure it based on your requirements.
-  #
+  # Only run manually or when called from other workflows
+  # Disabled automatic triggers until secrets are configured
   workflow_call:
     secrets:
       CRDA_KEY:
@@ -62,11 +57,10 @@ on:
   # push:
   #   branches: [ "main" ]
 
-  # pull_request_target is used to securely share secret to the PR's workflow run.
-  # For more info visit: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
-  pull_request_target:
-    branches: [ "main" ]
-    types: [ assigned, opened, synchronize, reopened, labeled, edited ]
+  # Commented out until secrets are properly configured
+  # pull_request_target:
+  #   branches: [ "main" ]
+  #   types: [ assigned, opened, synchronize, reopened, labeled, edited ]
 
 permissions:
   contents: read
@@ -117,7 +111,18 @@ jobs:
       # https://github.com/redhat-actions/crda/blob/main/README.md#3-installing-dependencies
       # Visit https://github.com/redhat-actions/crda/#4-set-up-authentication to understand
       # process to get a SNYK_TOKEN or a CRDA_KEY
+      - name: Check if secrets are available
+        id: check-secrets
+        run: |
+          if [[ -n "${{ secrets.CRDA_KEY }}" || -n "${{ secrets.SNYK_TOKEN }}" ]]; then
+            echo "secrets_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "secrets_available=false" >> $GITHUB_OUTPUT
+            echo "CRDA/Snyk secrets not configured. Skipping scan."
+          fi
+
       - name: CRDA Scan
+        if: steps.check-secrets.outputs.secrets_available == 'true'
         id: scan
         uses: redhat-actions/crda@v1
         with:
