@@ -44,23 +44,13 @@ name: CRDA Scan
 
 # Controls when the workflow will run
 on:
-  # Only run manually or when called from other workflows
-  # Disabled automatic triggers until secrets are configured
-  workflow_call:
-    secrets:
-      CRDA_KEY:
-        required: false
-      SNYK_TOKEN:
-        required: false
+  # Only run manually when secrets are properly configured
   workflow_dispatch:
-
-  # push:
-  #   branches: [ "main" ]
-
-  # Commented out until secrets are properly configured
-  # pull_request_target:
-  #   branches: [ "main" ]
-  #   types: [ assigned, opened, synchronize, reopened, labeled, edited ]
+    inputs:
+      force_run:
+        description: 'Force run even without secrets (for testing)'
+        required: false
+        default: 'false'
 
 permissions:
   contents: read
@@ -72,6 +62,8 @@ jobs:
       security-events: write    # for redhat-actions/crda to upload SARIF results
     name: Scan project vulnerabilities with CRDA
     runs-on: ubuntu-latest
+    # Only run if secrets are available or forced
+    if: github.event.inputs.force_run == 'true' || (secrets.CRDA_KEY != '' || secrets.SNYK_TOKEN != '')
     steps:
 
       - name: Check out repository
