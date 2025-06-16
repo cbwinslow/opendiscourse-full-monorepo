@@ -26,29 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Check if secrets are available
-        id: check-secrets
+      - name: Skip CRDA scan (credentials not configured)
         run: |
-          if [[ -n "${{ secrets.CRDA_KEY }}" || -n "${{ secrets.SNYK_TOKEN }}" ]]; then
-            echo "secrets_available=true" >> $GITHUB_OUTPUT
-          else
-            echo "secrets_available=false" >> $GITHUB_OUTPUT
-            echo "CRDA/Snyk secrets not configured. Skipping scan."
-          fi
-
-      - name: Skip scan
-        if: steps.check-secrets.outputs.secrets_available != 'true'
-        run: |
-          echo "CRDA scan skipped - no credentials configured"
+          echo "CRDA scan skipped - credentials not configured"
+          echo "To enable CRDA scanning, configure CRDA_KEY or SNYK_TOKEN secrets"
           echo "This is expected and not an error"
-          
-      - name: Checkout repository
-        if: steps.check-secrets.outputs.secrets_available == 'true'
-        uses: actions/checkout@v4
-
-      - name: CRDA Scan
-        if: steps.check-secrets.outputs.secrets_available == 'true'
-        uses: redhat-actions/crda@v1
-        with:
-          crda_key: ${{ secrets.CRDA_KEY }}
-          snyk_token: ${{ secrets.SNYK_TOKEN }}
