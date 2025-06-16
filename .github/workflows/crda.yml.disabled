@@ -40,11 +40,12 @@
 
 # 👋 Visit our GitHub organization at https://github.com/redhat-actions/ to see our actions and provide feedback.
 
-name: CRDA Scan
+name: CRDA Scan (Disabled)
 
-# Controls when the workflow will run
+# This workflow is disabled until proper secrets are configured
+# To re-enable, configure CRDA_KEY or SNYK_TOKEN secrets and uncomment the triggers below
 on:
-  # Only run manually when secrets are properly configured
+  # Completely disabled - no triggers
   workflow_dispatch:
     inputs:
       force_run:
