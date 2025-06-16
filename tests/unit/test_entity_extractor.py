@@ -1,10 +1,12 @@
 import sys
+from pathlib import Path
 
-sys.path.append("/home/cbwinslow/CascadeProjects/opendiscourse")
+# Ensure project root is on sys.path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import logging
 
-from entity_extractor import (
+from opendiscourse.entity_extractor import (
     extract_entities,
     save_entity,
     save_entity_mention,
