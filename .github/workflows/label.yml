@@ -1,0 +1,39 @@
+name: Labeler
+
+# Overrides the main branch workflow to prevent failures
+# This workflow runs but skips labeling if config is not available
+on: [pull_request_target]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Check if labeler config exists
+      id: check-config
+      run: |
+        if [ -f ".github/labeler.yml" ]; then
+          echo "config_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "config_exists=false" >> $GITHUB_OUTPUT
+          echo "Labeler config file not found - skipping labeling"
+        fi
+      
+    - name: Skip labeling
+      if: steps.check-config.outputs.config_exists != 'true'
+      run: |
+        echo "Labeler config not found in current branch"
+        echo "This is expected for PRs that add the config file"
+        echo "Labeling will work once the config is merged to main"
+        
+    - uses: actions/labeler@v4
+      if: steps.check-config.outputs.config_exists == 'true'
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        configuration-path: .github/labeler.yml
