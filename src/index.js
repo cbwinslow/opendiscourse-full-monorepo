@@ -10,6 +10,7 @@ const aiRoutes = require('./api/ai');
 const jobsRoutes = require('./api/jobs');
 const semanticSearchRoutes = require('./api/semanticSearch');
 const govinfoRoutes = require('./api/govinfo');
+const path = require('path');
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/search', semanticSearchRoutes);
 app.use('/api/govinfo', govinfoRoutes);
+app.use('/web', express.static(path.join(__dirname, '../web')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
