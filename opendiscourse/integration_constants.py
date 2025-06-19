@@ -20,51 +20,44 @@ JIRA_WEBHOOK_PAYLOAD = {
         "fields": {
             "summary": "Test Issue",
             "description": "This is a test issue",
-            "status": {"name": "To Do"}
-        }
-    }
+            "status": {"name": "To Do"},
+        },
+    },
 }
 
 BITBUCKET_WEBHOOK_PAYLOAD = {
     "push": {
-        "changes": [{
-            "new": {
-                "name": "main",
-                "target": {
-                    "hash": "1234567890",
-                    "message": "Test commit"
+        "changes": [
+            {
+                "new": {
+                    "name": "main",
+                    "target": {"hash": "1234567890", "message": "Test commit"},
                 }
             }
-        }]
+        ]
     }
 }
 
 # Error types
 ERROR_TYPES = {
-    'CONNECTION': 'Connection error occurred',
-    'AUTH': 'Authentication failed',
-    'CONFIG': 'Configuration error',
-    'API': 'API error',
-    'UNKNOWN': 'Unknown error'
+    "CONNECTION": "Connection error occurred",
+    "AUTH": "Authentication failed",
+    "CONFIG": "Configuration error",
+    "API": "API error",
+    "UNKNOWN": "Unknown error",
 }
 
 # Verification endpoints
 VERIFICATION_ENDPOINTS = {
-    'JIRA': '/rest/api/2/myself',
-    'GITHUB': '/user',
-    'BITBUCKET': '/user'
+    "JIRA": "/rest/api/2/myself",
+    "GITHUB": "/user",
+    "BITBUCKET": "/user",
 }
 
 # Webhook verification payloads
 WEBHOOK_TEST_PAYLOADS = {
-    'JIRA': {
-        'event': 'github.push',
-        'repository': 'opendiscourse'
-    },
-    'BITBUCKET': {
-        'event': 'repo:push',
-        'repository': 'opendiscourse'
-    }
+    "JIRA": {"event": "github.push", "repository": "opendiscourse"},
+    "BITBUCKET": {"event": "repo:push", "repository": "opendiscourse"},
 }
 
 # Status codes
@@ -74,5 +67,5 @@ RETRYABLE_CODES = {
     500,  # Internal Server Error
     502,  # Bad Gateway
     503,  # Service Unavailable
-    504   # Gateway Timeout
+    504,  # Gateway Timeout
 }
