@@ -49,6 +49,29 @@ black .
 ruff check --fix .
 ```
 
+### Data Pipeline Workflow
+
+To load documents into PostgreSQL, the project provides a pipeline script that
+scrapes data from `govinfo.gov`, processes each document for entity extraction
+and then stores the results. The pipeline requires a running PostgreSQL instance
+and an API key.
+
+Run locally with:
+
+```bash
+export POSTGRES_DB=opendiscourse
+export POSTGRES_USER=opendiscourse
+export POSTGRES_PASSWORD=opendiscourse
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export GOVINFO_API_KEY=<your api key>
+python scripts/populate_database.py
+```
+
+This workflow is also available as a GitHub Action defined in
+`.github/workflows/data-pipeline.yml` so it can be triggered manually or on a
+schedule.
+
 ## Project Structure
 
 ```
