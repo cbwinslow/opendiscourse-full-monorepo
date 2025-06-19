@@ -7,5 +7,6 @@
     "git.enableCommitSigning": true,
     "git.enableSmartCommit": false,
     "git.rebaseWhenSync": true,
-    "gitlens.detectNestedRepositories": true
+    "gitlens.detectNestedRepositories": true,
+    "semgrep.scan.onlyGitDirty": false
 }
