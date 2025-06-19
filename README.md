@@ -49,6 +49,36 @@ black .
 ruff check --fix .
 ```
 
+### RAG Database and Document Loaders
+
+The repository includes helpers for building a retrieval augmented generation (RAG)
+workflow. Document loaders in `opendiscourse/document_loaders.py` handle content
+from websites, text files and PDFs. The `RAGDatabase` in `opendiscourse/rag_database.py`
+wraps the vector store to store embeddings and search for relevant passages.
+
+Example usage:
+
+```python
+from opendiscourse.document_loaders import HTMLLoader
+from opendiscourse.rag_database import RAGDatabase
+from opendiscourse.services.vector_store import vector_db
+
+loader = HTMLLoader("https://example.com")
+rag_db = RAGDatabase(vector_db)
+rag_db.add_document(1, loader.load(), {"source": "example"})
+results = rag_db.search("my query")
+```
+
+To populate the database with data from [govdata.gov](https://www.govdata.gov)
+use the `GovDataAPI` helper:
+
+```python
+from opendiscourse.govdata_api import GovDataAPI
+
+api = GovDataAPI()
+datasets = api.list_datasets()
+```
+
 ## Project Structure
 
 ```
