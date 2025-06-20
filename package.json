@@ -35,7 +35,8 @@
     "cheerio": "^1.0.0-rc.12",
     "puppeteer": "^21.7.0",
     "langchain": "^0.3.28",
-    "vector-db": "^1.0.0"
+    "vector-db": "^1.0.0",
+    "express-rate-limit": "^7.5.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
