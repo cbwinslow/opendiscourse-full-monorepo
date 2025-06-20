@@ -1,20 +1,8 @@
-# GovInfo API Configuration
+"""Configuration for the GovInfo API."""
 import os
 
-# Sign up for API key at https://api.data.gov/signup
-API_KEY = os.getenv('GOVINFO_API_KEY', 'YOUR_API_KEY_HERE')
-
-# API Base URL
+API_KEY = os.getenv("GOVINFO_API_KEY", "YOUR_API_KEY_HERE")
 BASE_URL = "https://api.govinfo.gov"
-
-# Headers for API requests
-HEADERS = {
-    "X-Api-Key": API_KEY,
-    "Accept": "application/json"
-}
-
-# Collections endpoint
+HEADERS = {"X-Api-Key": API_KEY, "Accept": "application/json"}
 COLLECTIONS_URL = f"{BASE_URL}/collections"
-
-# Package endpoint
 PACKAGE_URL = f"{BASE_URL}/packages"
