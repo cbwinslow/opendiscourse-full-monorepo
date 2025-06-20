@@ -1,6 +1,8 @@
 import unittest
 import importlib
 from unittest.mock import MagicMock, patch
+import os
+import sys
 
 class TestEntityUtils(unittest.TestCase):
     @classmethod
@@ -9,15 +11,17 @@ class TestEntityUtils(unittest.TestCase):
         modules = {
             'torch': MagicMock(),
             'transformers': MagicMock(),
-            'vector_database': MagicMock(),
+            'opendiscourse.vector_database': MagicMock(),
             'psycopg2': MagicMock(),
             'psycopg2.extras': MagicMock(),
             'dotenv': MagicMock(),
             'numpy': MagicMock(),
         }
         with patch.dict('sys.modules', modules):
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            sys.path.insert(0, project_root)
             global entity_extractor
-            entity_extractor = importlib.import_module('entity_extractor')
+            entity_extractor = importlib.import_module('opendiscourse.entity_extractor')
         cls.entity_extractor = entity_extractor
 
     def test_deduplicate_entities(self):

@@ -3,6 +3,7 @@ import os
 from xml.etree import ElementTree as ET
 
 import psycopg2
+import json
 import requests
 from dotenv import load_dotenv
 
@@ -86,8 +87,13 @@ def fetch_govinfo_metadata():
                     "url": f"https://www.govinfo.gov/content/pkg/{doc['packageId']}/html/{doc['packageId']}.htm",
                 }
 
-                # Save to database
-                save_document(doc_details.get("title", ""), content, metadata)
+                # Save to database with raw metadata
+                save_document(
+                    doc_details.get("title", ""),
+                    content,
+                    metadata,
+                    doc_details,
+                )
 
                 logging.info(f"Processed document: {doc['packageId']}")
 
@@ -95,7 +101,7 @@ def fetch_govinfo_metadata():
                 logging.error(f"Error processing document {doc['packageId']}: {e!s}")
 
 
-def save_document(title, content, metadata):
+def save_document(title, content, metadata, raw_json):
     """Save document to PostgreSQL database."""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -104,11 +110,11 @@ def save_document(title, content, metadata):
         # Insert document
         cursor.execute(
             """
-            INSERT INTO documents (title, content, metadata, created_at, updated_at)
-            VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            INSERT INTO documents (title, content, api_raw, metadata, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             RETURNING id
         """,
-            (title, content, metadata),
+            (title, content, json.dumps(raw_json), metadata),
         )
 
         doc_id = cursor.fetchone()[0]
