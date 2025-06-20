@@ -1,17 +1,21 @@
-<<<<<<< HEAD
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+# Virtual environments
 venv/
+.venv/
 ENV/
 build/
 dist/
 *.egg-info/
+*.egg
 *.venv
-*.pytest_cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Environment variables
 .env
@@ -30,6 +34,7 @@ dist/
 .vscode/
 *.swp
 *.swo
+*~
 
 # Logs
 *.log
@@ -43,6 +48,16 @@ htmlcov/
 .coverage.*.json
 .coverage.xml
 .nox/
+
+# Pre-commit
+.pre-commit-config.yaml
+
+# Ruff
+.ruff_cache/
+
+# Black
+.pyc
+.python-version
 
 # Misc
 .DS_Store
