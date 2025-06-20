@@ -15,13 +15,19 @@ router.get('/', (req, res) => {
 
 router.post('/run', (req, res) => {
   const { script, args = [] } = req.body;
-  const scriptPath = `${scriptsDir}/${script}`;
-  if (!fs.existsSync(scriptPath)) return res.status(404).send('Script not found');
-  execFile('python', [scriptPath, ...args], { maxBuffer: 1024 * 500 }, (error, stdout, stderr) => {
-    if (error) {
-      return res.status(500).send(stderr || error.message);
+  fs.readdir(scriptsDir, (err, files) => {
+    if (err) return res.status(500).json({ error: 'Failed to read scripts directory' });
+    const allowedScripts = files.filter(f => f.endsWith('.py'));
+    if (!allowedScripts.includes(script)) {
+      return res.status(400).send('Invalid script name');
     }
-    res.send(stdout);
+    const scriptPath = path.join(scriptsDir, script);
+    execFile('python', [scriptPath, ...args], { maxBuffer: 1024 * 500 }, (error, stdout, stderr) => {
+      if (error) {
+        return res.status(500).send(stderr || error.message);
+      }
+      res.send(stdout);
+    });
   });
 });
 
