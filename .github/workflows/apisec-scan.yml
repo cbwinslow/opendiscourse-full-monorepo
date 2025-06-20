@@ -29,17 +29,10 @@ name: APIsec
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  # Customize trigger events based on your DevSecOps processes.
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  # Only run when secrets are configured
+  workflow_dispatch:
   schedule:
     - cron: '33 0 * * 5'
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
 
 
 permissions:
@@ -54,7 +47,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+       - name: Check if secrets are available
+         id: check-secrets
+         run: |
+           if [[ -n "${{ secrets.apisec_username }}" && -n "${{ secrets.apisec_password }}" ]]; then
+             echo "secrets_available=true" >> $GITHUB_OUTPUT
+           else
+             echo "secrets_available=false" >> $GITHUB_OUTPUT
+             echo "APIsec secrets not configured. Skipping scan."
+           fi
+         
        - name: APIsec scan
+         if: steps.check-secrets.outputs.secrets_available == 'true'
          uses: apisec-inc/apisec-run-scan@025432089674a28ba8fb55f8ab06c10215e772ea
          with:
           # The APIsec username with which the scans will be executed
@@ -65,7 +69,9 @@ jobs:
           apisec-project: "VAmPI"
           # The name of the sarif format result file The file is written only if this property is provided.
           sarif-result-file: "apisec-results.sarif"
+          
        - name: Import results
+         if: steps.check-secrets.outputs.secrets_available == 'true'
          uses: github/codeql-action/upload-sarif@v3
          with:
           sarif_file: ./apisec-results.sarif

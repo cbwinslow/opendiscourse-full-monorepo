@@ -12,66 +12,7 @@ function buildQuery() {
     return { query, num_results: numResults, match_threshold: match };
 }
 
-// 1. Extract your language templates into a single map:
-const langTemplates = {
-  json: s => s,
-  curl: s => `curl -X POST https://api.exa.ai/search \
--H 'Content-Type: application/json' \
--H 'Authorization: Bearer ${apiKey}' \
--d '${s}'`,
-  python: s => `import requests
-headers = {'Authorization': 'Bearer ${apiKey}'}
-resp = requests.post('https://api.exa.ai/search', json=${s})
-print(resp.json())`,
-  ts: s => `fetch('https://api.exa.ai/search', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ${apiKey}'
-  },
-  body: JSON.stringify(${s})
-})`,
-  go: s => `package main
-import ("bytes"; "net/http")
-func main() {
-  http.Post("https://api.exa.ai/search", "application/json", bytes.NewBuffer([]byte('${s}')))
-}`,
-  rust: s => `reqwest::Client::new()
-  .post("https://api.exa.ai/search")
-  .bearer_auth("${apiKey}")
-  .json(&${s})
-  .send()
-  .await?;`
-};
 
-// 2. In updateQueryStrings(), iterate the map instead of hard-coding each block:
-function updateQueryStrings() {
-  const params = buildQuery();
-  const jsonStr = JSON.stringify(params, null, 2);
-  Object.entries(langTemplates).forEach(([lang, tmpl]) => {
-    document.getElementById(lang).textContent = tmpl(jsonStr);
-  });
-}
-
-// 3. Batch-wire inputs to the same handler:
-[ queryInput, numResultsInput, matchInput ]
-  .forEach(el =>
-    ['input','change'].forEach(evt =>
-      el.addEventListener(evt, updateQueryStrings)
-    )
-  );
-
-// 4. (Optionally) Cache your tab buttons & contents:
-const tabs = {
-  buttons: document.querySelectorAll('.tab-buttons button'),
-  contents: document.querySelectorAll('.tab-content')
-};
-tabs.buttons.forEach(btn =>
-  btn.addEventListener('click', () => {
-    tabs.contents.forEach(c => c.classList.remove('active'));
-    document.getElementById(btn.dataset.lang).classList.add('active');
-  })
-);
     const params = buildQuery();
     const jsonStr = JSON.stringify(params, null, 2);
     document.getElementById('json').textContent = jsonStr;
