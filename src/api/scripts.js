@@ -15,13 +15,7 @@ router.get('/', (req, res) => {
 
 router.post('/run', (req, res) => {
   const { script, args = [] } = req.body;
-  const scriptPath = `${scriptsDir}/${script}`;
-  if (!fs.existsSync(scriptPath)) return res.status(404).send('Script not found');
-  execFile('python', [scriptPath, ...args], { maxBuffer: 1024 * 500 }, (error, stdout, stderr) => {
-    if (error) {
-      return res.status(500).send(stderr || error.message);
-    }
-    res.send(stdout);
+
   });
 });
 

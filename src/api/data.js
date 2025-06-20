@@ -1,6 +1,6 @@
 const express = require('express');
 const { Pool } = require('pg');
-const rateLimit = require('express-rate-limit');
+
 const router = express.Router();
 
 const pool = new Pool({
@@ -11,12 +11,6 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-});
-
-router.get('/', limiter, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM documents LIMIT 20');
     res.json(result.rows);

@@ -12,7 +12,7 @@ function buildQuery() {
     return { query, num_results: numResults, match_threshold: match };
 }
 
-function updateQueryStrings() {
+
     const params = buildQuery();
     const jsonStr = JSON.stringify(params, null, 2);
     document.getElementById('json').textContent = jsonStr;
