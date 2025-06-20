@@ -22,6 +22,7 @@ class TestEntityUtils(unittest.TestCase):
             sys.path.insert(0, project_root)
             global entity_extractor
             entity_extractor = importlib.import_module('opendiscourse.entity_extractor')
+            sys.path.pop(0)  # Remove the inserted path to avoid side effects
         cls.entity_extractor = entity_extractor
 
     def test_deduplicate_entities(self):
