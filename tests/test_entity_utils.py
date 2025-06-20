@@ -18,10 +18,7 @@ class TestEntityUtils(unittest.TestCase):
             'numpy': MagicMock(),
         }
         with patch.dict('sys.modules', modules):
-            cls.project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            sys.path.insert(0, cls.project_root)
-            global entity_extractor
-            entity_extractor = importlib.import_module('opendiscourse.entity_extractor')
+
         cls.entity_extractor = entity_extractor
 
     def test_deduplicate_entities(self):
