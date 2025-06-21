@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Update package repositories
 sudo apt-get update

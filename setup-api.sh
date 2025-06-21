@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Install Python packages
 python3 -m pip install -r requirements.txt

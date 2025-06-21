@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+# DEPRECATED: Environment-specific helper for legacy cluster nodes.
 
 # Copy SSH key to both nodes
 ssh-copy-id -i /home/cbwinslow/CascadeProjects/windsurf-project/ssh-keys/cluster-key.pub cbwinslow@172.28.158.179

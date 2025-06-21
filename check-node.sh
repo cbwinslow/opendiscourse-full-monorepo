@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Check if we're running with sudo
 if [ "$EUID" -ne 0 ]; then 
