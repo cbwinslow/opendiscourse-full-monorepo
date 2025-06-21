@@ -13,11 +13,33 @@ function loadHistory(){
   });
 }
 
-async function runQuery(){
+async function runQuery() {
   const q = document.getElementById('query').value;
-  const resp = await fetch('/api/rag', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
-  const json = await resp.json();
-  document.getElementById('result').textContent = json.answer || JSON.stringify(json);
+  const resultElem = document.getElementById('result');
+  try {
+    const resp = await fetch('/api/rag', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q })
+    });
+    if (!resp.ok) {
+      let errorMsg = `Error: ${resp.status} ${resp.statusText}`;
+      try {
+        const errorJson = await resp.json();
+        if (errorJson && errorJson.error) {
+          errorMsg += ` - ${errorJson.error}`;
+        }
+      } catch (e) {
+        // ignore JSON parse errors
+      }
+      resultElem.textContent = errorMsg;
+      return;
+    }
+    const json = await resp.json();
+    resultElem.textContent = json.answer || JSON.stringify(json);
+  } catch (err) {
+    resultElem.textContent = `Network error: ${err.message}`;
+  }
 }
 
 function saveQuery(){
