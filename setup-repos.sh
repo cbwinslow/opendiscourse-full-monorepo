@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Add Ceph repository
 wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add -

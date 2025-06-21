@@ -1,4 +1,7 @@
 #!/bin/bash
+set -euo pipefail
+# DEPRECATED: This script was used for a one-off server setup and should
+# not be run in modern deployments.
 
 # Copy files to master node
 scp doc-repo-api.py doc-repo-api.service requirements.txt cbwinslow@172.28.158.179:/home/cbwinslow/

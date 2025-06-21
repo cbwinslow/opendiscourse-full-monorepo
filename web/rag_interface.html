@@ -14,7 +14,7 @@
     <h1>RAG Query</h1>
     <input type="text" id="question" size="60" placeholder="Ask about laws...">
     <button onclick="ask()">Ask</button>
-    <pre id="answer"></pre>
+<pre id="answer"></pre>
 </div>
 <script>
 async function ask(){
@@ -24,5 +24,6 @@ async function ask(){
  document.getElementById('answer').textContent=json.answer||JSON.stringify(json);
 }
 </script>
+<script src="/web/static/js/track.js"></script>
 </body>
 </html>

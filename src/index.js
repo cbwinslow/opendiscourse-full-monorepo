@@ -2,6 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const morgan = require('morgan');
 const { Sequelize } = require('sequelize');
 const { initializeModels } = require('./database/models');
 const authRoutes = require('./api/auth');
@@ -10,6 +13,7 @@ const aiRoutes = require('./api/ai');
 const jobsRoutes = require('./api/jobs');
 const semanticSearchRoutes = require('./api/semanticSearch');
 const govinfoRoutes = require('./api/govinfo');
+const trackRoutes = require('./api/track');
 
 const path = require('path');
 
@@ -18,6 +22,13 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(helmet());
+app.use(morgan('combined'));
+app.use(cookieParser());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'change-me',
+  resave: false,
+  saveUninitialized: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -38,6 +49,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/search', semanticSearchRoutes);
 app.use('/api/govinfo', govinfoRoutes);
+app.use('/api/track', trackRoutes);
 
 app.use('/web', express.static(path.join(__dirname, '../web')));
 

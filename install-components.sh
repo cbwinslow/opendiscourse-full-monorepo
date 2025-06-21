@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Function to install components on Ubuntu
 install_ubuntu() {
