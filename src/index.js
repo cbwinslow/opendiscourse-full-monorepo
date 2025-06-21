@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
+const lusca = require('lusca');
 const morgan = require('morgan');
 const { Sequelize } = require('sequelize');
 const { initializeModels } = require('./database/models');
@@ -29,6 +30,7 @@ app.use(session({
   resave: false,
   saveUninitialized: true
 }));
+app.use(lusca.csrf());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
