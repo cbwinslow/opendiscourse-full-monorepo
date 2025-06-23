@@ -173,3 +173,23 @@ CREATE TABLE document_entities (
     sentiment_score DECIMAL(4,2),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+-- PDF Documents table
+CREATE TABLE pdf_documents (
+    id SERIAL PRIMARY KEY,
+    source_file TEXT NOT NULL,
+    title TEXT,
+    content TEXT,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- PDF Translations table
+CREATE TABLE pdf_document_translations (
+    id SERIAL PRIMARY KEY,
+    pdf_document_id INTEGER REFERENCES pdf_documents(id),
+    language VARCHAR(10) NOT NULL,
+    translated_text TEXT NOT NULL,
+    summary TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
