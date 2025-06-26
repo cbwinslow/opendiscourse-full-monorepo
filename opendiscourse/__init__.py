@@ -20,6 +20,20 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).parent.absolute()
 
 # Import core functionality
-from .core.config import settings  # noqa: E402
+try:
+    from .core.config import settings  # noqa: E402
+except ImportError:
+    settings = None
 
-__all__ = ["settings"]
+# Import additional modules
+try:
+    from .govdata_api import GovDataAPI
+except ImportError:
+    GovDataAPI = None
+
+try:
+    from .rag_database import RAGDatabase
+except ImportError:
+    RAGDatabase = None
+
+__all__ = ["settings", "GovDataAPI", "RAGDatabase"]
