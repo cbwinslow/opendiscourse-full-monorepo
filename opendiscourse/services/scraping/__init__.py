@@ -10,6 +10,6 @@ from .govinfo_scraper import GOVInfoScraper
 
 # Define what gets imported with 'from opendiscourse.services.scraping import *'
 __all__ = [
-    'GOVInfoScraper',
-    'GOVInfoDocumentProcessor',
+    "GOVInfoScraper",
+    "GOVInfoDocumentProcessor",
 ]

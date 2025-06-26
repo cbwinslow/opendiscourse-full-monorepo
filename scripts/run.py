@@ -49,8 +49,7 @@ def main() -> None:
 
     uvicorn.run(
         "scripts.run:app",  # Updated to match this file's location
-        host="0.0.0.0",
-        port=8000,
+        port=8080,  # Changed port to 8080 to avoid conflicts
         reload=getattr(settings, "DEBUG", False),  # Safer attribute access
         log_level="info" if not getattr(settings, "DEBUG", False) else "debug",
     )

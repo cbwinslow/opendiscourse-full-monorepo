@@ -4,7 +4,7 @@
     "python.linting.pylintEnabled": false,
     "python.formatting.provider": "black",
     "python.analysis.typeCheckingMode": "off",
-    
+
     // Editor Configuration
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "ms-python.python",
@@ -15,17 +15,17 @@
     "editor.insertSpaces": true,
     "editor.rulers": [88],
     "editor.detectIndentation": false,
-    
+
     // Files
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
-    
+
     // Language-specific settings
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"
     },
-    
+
     // Disable spell checking by default
     "cSpell.enabled": false
 }

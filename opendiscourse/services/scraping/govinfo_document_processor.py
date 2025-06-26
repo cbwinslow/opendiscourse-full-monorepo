@@ -5,7 +5,6 @@ from the GovInfo API, including bills, regulations, and other government documen
 """
 
 # Standard library imports
-import difflib
 import hashlib
 import json
 import logging
@@ -30,13 +29,16 @@ load_dotenv()
 JsonDict = Dict[str, Any]
 ValidationResult = Dict[str, Union[bool, List[str], str]]
 
+
 # Collection types
 class CollectionType:
     """Supported document collection types."""
+
     BILLS = "BILLS"
     CFR = "CFR"
     FEDERAL_REGISTER = "FR"
     COMMITTEE_HEARINGS = "CHRG"
+
 
 # Collection type metadata
 COLLECTION_TYPES: Dict[str, str] = {
@@ -54,9 +56,11 @@ SCHEMA_VERSIONS: Dict[str, str] = {
     CollectionType.COMMITTEE_HEARINGS: "uslm-2.1.0.xsd",
 }
 
+
 # Document status constants
 class DocumentStatus:
     """Document processing statuses."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -65,20 +69,23 @@ class DocumentStatus:
     VALID = "valid"
     INVALID = "invalid"
 
+
 # Error types
 class ErrorType:
     """Error types for document processing."""
+
     SCHEMA_VALIDATION = "schema_validation"
     METADATA_VALIDATION = "metadata_validation"
     VERSION_CONFLICT = "version_conflict"
     PROCESSING_ERROR = "processing_error"
 
+
 def get_db_connection() -> PgConnection:
     """Get a database connection.
-    
+
     Returns:
         A connection to the PostgreSQL database.
-        
+
     Raises:
         psycopg2.OperationalError: If the connection to the database fails.
     """
@@ -97,11 +104,11 @@ def get_db_connection() -> PgConnection:
 
 def validate_schema(content: str, collection: str) -> ValidationResult:
     """Validate XML content against USLM schema.
-    
+
     Args:
         content: The XML content to validate.
         collection: The collection type (e.g., 'BILLS', 'CFR').
-        
+
     Returns:
         A dictionary containing:
         - is_valid: Boolean indicating if validation passed
@@ -111,10 +118,14 @@ def validate_schema(content: str, collection: str) -> ValidationResult:
     try:
         schema_path = os.path.join(
             os.path.dirname(__file__),
-            "..", "..", "docs", "ref", "uslm",
-            SCHEMA_VERSIONS.get(collection, "uslm-2.1.0.xsd")
+            "..",
+            "..",
+            "docs",
+            "ref",
+            "uslm",
+            SCHEMA_VERSIONS.get(collection, "uslm-2.1.0.xsd"),
         )
-        
+
         if not os.path.exists(schema_path):
             error_msg = f"Schema file not found: {schema_path}"
             logger.error(error_msg)
@@ -123,7 +134,7 @@ def validate_schema(content: str, collection: str) -> ValidationResult:
                 "errors": [error_msg],
                 "schema_version": "unknown",
             }
-            
+
         schema = xmlschema.XMLSchema(schema_path)
         schema.validate(content)
 
@@ -132,7 +143,7 @@ def validate_schema(content: str, collection: str) -> ValidationResult:
             "errors": [],
             "schema_version": SCHEMA_VERSIONS.get(collection, "unknown"),
         }
-        
+
     except xmlschema.XMLSchemaException as e:
         logger.error("Schema validation error: %s", str(e))
         return {
@@ -151,11 +162,11 @@ def validate_schema(content: str, collection: str) -> ValidationResult:
 
 def validate_metadata(metadata: JsonDict, collection: str) -> ValidationResult:
     """Validate document metadata against required fields for the collection.
-    
+
     Args:
         metadata: Dictionary containing document metadata.
         collection: The collection type (e.g., 'BILLS', 'CFR').
-        
+
     Returns:
         A dictionary containing:
         - is_valid: Boolean indicating if all required fields are present
@@ -170,30 +181,30 @@ def validate_metadata(metadata: JsonDict, collection: str) -> ValidationResult:
     }
 
     errors: List[str] = []
-    
+
     # Check for missing required fields
     for field in required_fields.get(collection, []):
         if not metadata.get(field):
             errors.append(f"Missing required field: {field}")
-    
+
     # Check for empty values in required fields
     for field, value in metadata.items():
         if field in required_fields.get(collection, []) and not value:
             errors.append(f"Empty value for required field: {field}")
-    
+
     return {
-        "is_valid": len(errors) == 0, 
+        "is_valid": len(errors) == 0,
         "errors": errors,
-        "schema_version": "n/a"  # For consistency with validate_schema return type
+        "schema_version": "n/a",  # For consistency with validate_schema return type
     }
 
 
 def calculate_content_hash(content: str) -> str:
     """Calculate a SHA-256 hash of the content for version tracking.
-    
+
     Args:
         content: The content to hash.
-        
+
     Returns:
         A hexadecimal string representing the SHA-256 hash of the content.
     """
@@ -208,16 +219,16 @@ def find_previous_version(
     doc_id: str, collection: str, conn: PgConnection
 ) -> Optional[Dict[str, Any]]:
     """Find the most recent previous version of a document in the database.
-    
+
     Args:
         doc_id: The document identifier.
         collection: The collection type (e.g., 'BILLS', 'CFR').
         conn: An active database connection.
-        
+
     Returns:
         A dictionary containing the previous version's id, content, and version,
         or None if no previous version exists.
-        
+
     Raises:
         psycopg2.DatabaseError: If there's an error executing the database query.
     """
@@ -252,6 +263,7 @@ def find_previous_version(
 
 class ProcessedDocument(TypedDict):
     """Type definition for a processed document."""
+
     doc_id: str
     content: str
     metadata: JsonDict
@@ -267,44 +279,46 @@ def process_uslm(
     doc_id: str, content: str, collection: str, conn: Optional[PgConnection] = None
 ) -> Optional[ProcessedDocument]:
     """Process a USLM document with all validation and version tracking.
-    
+
     Args:
         doc_id: The document identifier.
         content: The XML content of the document.
         collection: The collection type (e.g., 'BILLS', 'CFR').
         conn: Optional database connection. If not provided, a new one will be created.
-        
+
     Returns:
         A dictionary containing the processed document data or None if processing fails.
-        
+
     Raises:
         ValueError: If the document content is empty or invalid.
         ET.ParseError: If the XML content is malformed.
     """
     if not content.strip():
         raise ValueError("Document content cannot be empty")
-    
+
     close_conn = False
     if conn is None:
         conn = get_db_connection()
         close_conn = True
-    
+
     try:
         # Parse XML content
         try:
             root = ET.fromstring(content)
         except ET.ParseError as e:
-            logger.error("Failed to parse XML content for document %s: %s", doc_id, str(e))
+            logger.error(
+                "Failed to parse XML content for document %s: %s", doc_id, str(e)
+            )
             raise
 
         # Extract metadata with proper error handling
         metadata: JsonDict = {
             "type": "uslm",
             "collection": collection,
-            "title": getattr(root.find(".//title"), 'text', ''),
-            "date": getattr(root.find(".//date"), 'text', ''),
-            "version": getattr(root.find(".//version"), 'text', ''),
-            "document_id": getattr(root.find(".//documentId"), 'text', doc_id)
+            "title": getattr(root.find(".//title"), "text", ""),
+            "date": getattr(root.find(".//date"), "text", ""),
+            "version": getattr(root.find(".//version"), "text", ""),
+            "document_id": getattr(root.find(".//documentId"), "text", doc_id),
         }
 
         # Validate schema
@@ -313,7 +327,7 @@ def process_uslm(
             logger.error(
                 "Schema validation failed for %s: %s",
                 doc_id,
-                "; ".join(schema_validation["errors"])
+                "; ".join(schema_validation["errors"]),
             )
             return None
 
@@ -323,7 +337,7 @@ def process_uslm(
             logger.error(
                 "Metadata validation failed for %s: %s",
                 doc_id,
-                "; ".join(metadata_validation["errors"])
+                "; ".join(metadata_validation["errors"]),
             )
             return None
 
@@ -356,17 +370,13 @@ def process_uslm(
         if previous_version:
             previous_content_hash = calculate_content_hash(previous_version["content"])
             if content_hash == previous_content_hash:
-                logger.info(
-                    "Document %s has not changed, skipping update", doc_id
-                )
+                logger.info("Document %s has not changed, skipping update", doc_id)
                 result["status"] = DocumentStatus.COMPLETED
             else:
-                logger.info(
-                    "Document %s has changed, update required", doc_id
-                )
-        
+                logger.info("Document %s has changed, update required", doc_id)
+
         return result
-        
+
     except Exception as e:  # pylint: disable=broad-except
         logger.exception("Error processing document %s: %s", doc_id, str(e))
         return None

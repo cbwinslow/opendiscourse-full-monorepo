@@ -58,47 +58,45 @@ class GOVInfoScraper:
             Configured requests.Session instance.
         """
         session = requests.Session()
-        
+
         # Configure retry strategy
         retry_strategy = Retry(
             total=3,
             backoff_factor=1,
             status_forcelist=[429, 500, 502, 503, 504],
         )
-        
+
         # Mount the retry strategy to both http and https
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
-        
+
         # Set default headers
-        session.headers.update({
-            "X-Api-Key": self.api_key,
-            "User-Agent": "OpenDiscourse/1.0",
-        })
-        
+        session.headers.update(
+            {
+                "X-Api-Key": self.api_key,
+                "User-Agent": "OpenDiscourse/1.0",
+            }
+        )
+
         return session
-        
+
     def _make_request(self, endpoint: str, params: Optional[dict] = None) -> Response:
         """Make an HTTP GET request to the GovInfo API.
-        
+
         Args:
             endpoint: API endpoint (e.g., '/collections/BILLS/2023-01-01')
             params: Optional query parameters
-            
+
         Returns:
             Response object from requests
-            
+
         Raises:
             requests.HTTPError: If the request fails
         """
         url = urljoin(self.base_url, endpoint)
         try:
-            response = self.session.get(
-                url,
-                params=params,
-                timeout=self.timeout
-            )
+            response = self.session.get(url, params=params, timeout=self.timeout)
             response.raise_for_status()
             return response
         except requests.RequestException as e:
@@ -108,10 +106,10 @@ class GOVInfoScraper:
 
 def get_db_connection() -> PgConnection:
     """Get a database connection.
-    
+
     Returns:
         A connection to the PostgreSQL database.
-        
+
     Raises:
         psycopg2.OperationalError: If the connection to the database fails.
     """
@@ -130,26 +128,26 @@ def get_db_connection() -> PgConnection:
 
 def fetch_govinfo_metadata() -> None:
     """Fetch metadata from GovInfo API.
-    
+
     Fetches collections and their associated documents from the GovInfo API,
     processes them, and saves them to the database.
-    
+
     Environment Variables:
         GOVINFO_API_KEY: API key for accessing the GovInfo API
-        
+
     Raises:
         ValueError: If GOVINFO_API_KEY is not set
     """
     base_url = "https://api.govinfo.gov"
     api_key = os.getenv("GOVINFO_API_KEY")
-    
+
     if not api_key:
         raise ValueError("GOVINFO_API_KEY environment variable not set")
 
     # Get collections
     collections_url = f"{base_url}/collections"
     params = {"api_key": api_key}
-    
+
     try:
         response = requests.get(collections_url, params=params, timeout=30)
         response.raise_for_status()
@@ -170,14 +168,17 @@ def fetch_govinfo_metadata() -> None:
             "collectionCode": collection_name,
             "api_key": api_key,
         }
-        
+
         try:
             response = requests.get(documents_url, params=params, timeout=30)
             response.raise_for_status()
             documents = response.json()
         except requests.RequestException as e:
-            logger.error("Failed to fetch documents for collection %s: %s", 
-                        collection_name, str(e))
+            logger.error(
+                "Failed to fetch documents for collection %s: %s",
+                collection_name,
+                str(e),
+            )
             continue
 
         # Process each document
@@ -187,13 +188,11 @@ def fetch_govinfo_metadata() -> None:
                 doc_id = doc.get("packageId")
                 if not doc_id:
                     continue
-                    
+
                 doc_url = f"{base_url}/packages/{doc_id}/summary"
                 try:
                     doc_response = requests.get(
-                        doc_url, 
-                        params={"api_key": api_key},
-                        timeout=30
+                        doc_url, params={"api_key": api_key}, timeout=30
                     )
                     doc_response.raise_for_status()
                     doc_details = doc_response.json()
@@ -205,14 +204,13 @@ def fetch_govinfo_metadata() -> None:
                 content_url = f"{base_url}/packages/{doc_id}/content-detail.xml"
                 try:
                     content_response = requests.get(
-                        content_url,
-                        params={"api_key": api_key},
-                        timeout=30
+                        content_url, params={"api_key": api_key}, timeout=30
                     )
                     content_response.raise_for_status()
                 except requests.RequestException as e:
-                    logger.warning("No content available for document %s: %s", 
-                                 doc_id, str(e))
+                    logger.warning(
+                        "No content available for document %s: %s", doc_id, str(e)
+                    )
                     content = ""
 
                 if content_response.status_code == 200:
@@ -222,8 +220,8 @@ def fetch_govinfo_metadata() -> None:
                     except ET.ParseError as e:
                         logger.warning(
                             "Failed to parse XML content for document %s: %s",
-                            doc_id, 
-                            str(e)
+                            doc_id,
+                            str(e),
                         )
                         content = content_response.text
 
@@ -243,26 +241,25 @@ def fetch_govinfo_metadata() -> None:
                     save_document(
                         title=doc_details.get("title", ""),
                         content=content,
-                        metadata=metadata
+                        metadata=metadata,
                     )
 
                     logger.info("Processed document: %s", doc_id)
 
-
                 except Exception as e:
                     logger.error(
-                        "Error processing document %s: %s", 
-                        doc_id, 
+                        "Error processing document %s: %s",
+                        doc_id,
                         str(e),
-                        exc_info=True
+                        exc_info=True,
                     )
 
             except Exception as e:
                 logger.error(
-                    "Unexpected error processing document %s: %s", 
-                    doc.get("packageId", "unknown"), 
+                    "Unexpected error processing document %s: %s",
+                    doc.get("packageId", "unknown"),
                     str(e),
-                    exc_info=True
+                    exc_info=True,
                 )
 
 
@@ -279,7 +276,7 @@ def save_document(title: str, content: str, metadata: dict) -> Optional[int]:
     """
     conn = None
     cursor = None
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -288,10 +285,10 @@ def save_document(title: str, content: str, metadata: dict) -> Optional[int]:
         cursor.execute(
             """
             INSERT INTO documents (
-                title, 
-                content, 
-                metadata, 
-                created_at, 
+                title,
+                content,
+                metadata,
+                created_at,
                 updated_at
             ) VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             RETURNING id
@@ -307,20 +304,16 @@ def save_document(title: str, content: str, metadata: dict) -> Optional[int]:
         if conn:
             conn.rollback()
         logger.error(
-            "Database error saving document '%s': %s", 
-            title[:50] + '...' if len(title) > 50 else title,
+            "Database error saving document '%s': %s",
+            title[:50] + "..." if len(title) > 50 else title,
             str(e),
-            exc_info=True
+            exc_info=True,
         )
         return None
     except Exception as e:
         if conn:
             conn.rollback()
-        logger.error(
-            "Unexpected error saving document: %s", 
-            str(e),
-            exc_info=True
-        )
+        logger.error("Unexpected error saving document: %s", str(e), exc_info=True)
         return None
     finally:
         if cursor:
@@ -331,7 +324,7 @@ def save_document(title: str, content: str, metadata: dict) -> Optional[int]:
 
 def main() -> None:
     """Run the GovInfo scraper.
-    
+
     Loads environment variables and starts the scraping process.
     """
     try:
@@ -340,11 +333,7 @@ def main() -> None:
         fetch_govinfo_metadata()
         logger.info("GovInfo scraper finished successfully")
     except Exception as e:
-        logger.critical(
-            "GovInfo scraper failed: %s", 
-            str(e), 
-            exc_info=True
-        )
+        logger.critical("GovInfo scraper failed: %s", str(e), exc_info=True)
         raise
 
 

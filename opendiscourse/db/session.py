@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from typing import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from opendiscourse.core.config import settings
 
@@ -22,10 +22,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db() -> Generator[Session, None, None]:
     """Get a database session.
-    
+
     Yields:
         Session: A database session
-        
+
     Example:
         >>> with get_db() as db:
         ...     # Use the database session
@@ -42,10 +42,10 @@ def get_db() -> Generator[Session, None, None]:
 @contextmanager
 def get_db_context() -> Generator[Session, None, None]:
     """Context manager for database sessions.
-    
+
     Yields:
         Session: A database session
-        
+
     Example:
         >>> with get_db_context() as db:
         ...     # Use the database session
