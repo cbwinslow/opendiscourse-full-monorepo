@@ -2,25 +2,21 @@
 
 This document provides an overview of the files and folders in the `opendiscourse` project, describing their purpose and how they fit into the overall architecture. This will help onboard new contributors, clarify the project layout, and ensure maintainability.
 
+**Last Updated:** After merging v1.0.1 branch with database components, data pipeline workflow, and RAG/govdata integrations.
+
 ---
 
 ## Root Directory
 
 | File/Folder         | Purpose/Function                                                                                   |
 |--------------------|----------------------------------------------------------------------------------------------------|
-| `.env.example`     | Template for environment variables (API keys, DB URLs, etc.)                                       |
+| `.editorconfig`    | Editor configuration for consistent coding style across different editors                           |
+| `.env.example`     | Template for environment variables (API keys, DB URLs, etc.) - moved to config/                   |
 | `.gitignore`       | Specifies files/folders to exclude from git version control (e.g., node_modules, secrets, builds)   |
-| `.replit`          | Replit-specific config for running the project in the Replit environment                           |
-| `components.json`  | Configuration for UI component library (e.g., shadcn/ui)                                           |
-| `docker-compose.yml`| Docker Compose config for running services (Postgres, Elasticsearch, app)                         |
-| `Dockerfile`       | Multi-stage Docker build for dev, build, and production images                                     |
-| `drizzle.config.ts`| Drizzle ORM config for migrations and DB connection                                                |
-| `package.json`     | Node.js project manifest: scripts, dependencies, metadata                                          |
-| `package-lock.json`| Lockfile for npm dependencies, ensures reproducible installs                                       |
-| `postcss.config.js`| PostCSS config for CSS processing (Tailwind, autoprefixer)                                         |
-| `tailwind.config.ts`| Tailwind CSS config for design system and customizations                                          |
-| `tsconfig.json`    | TypeScript compiler config, including path aliases and strictness                                  |
-| `vite.config.ts`   | Vite build tool config for frontend (React, dev server, aliases)                                   |
+| `.windsurfrules`   | WindSurf IDE specific rules and configurations                                                      |
+| `mypy.ini`         | MyPy type checker configuration for Python                                                         |
+| `pyproject.toml`   | Python project configuration (dependencies, build system, tools)                                   |
+| `setup.cfg`        | Python setup configuration for testing and development tools                                       |
 
 ---
 

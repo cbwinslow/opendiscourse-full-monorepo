@@ -1,4 +1,5 @@
 """Configuration for Congress member API."""
+
 import os
 
 API_KEY = os.getenv("CONGRESS_API_KEY", "YOUR_API_KEY_HERE")

@@ -36,4 +36,11 @@ try:
 except ImportError:
     RAGDatabase = None
 
-__all__ = ["settings", "GovDataAPI", "RAGDatabase"]
+try:
+    from . import entity_utils
+except ImportError as e:
+    import logging
+    logging.warning(f"Failed to import entity_utils: {e}")
+    entity_utils = None
+
+__all__ = ["settings", "GovDataAPI", "RAGDatabase", "entity_utils"]

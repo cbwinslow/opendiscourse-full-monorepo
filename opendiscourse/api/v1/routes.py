@@ -7,9 +7,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 app = Flask(__name__)
 
 # Configure PostgreSQL connection
-app.config[
-    "SQLALCHEMY_DATABASE_URI"
-] = "postgresql://doc_user:doc_password123@localhost/opendiscourse"
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    "postgresql://doc_user:doc_password123@localhost/opendiscourse"
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 

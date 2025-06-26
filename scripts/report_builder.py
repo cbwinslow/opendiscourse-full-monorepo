@@ -13,9 +13,9 @@ cur = conn.cursor()
 cur.execute(QUERY)
 rows = cur.fetchall()
 
-with open('entity_report.csv', 'w', newline='') as f:
+with open("entity_report.csv", "w", newline="") as f:
     writer = csv.writer(f)
-    writer.writerow(['entity_type', 'count'])
+    writer.writerow(["entity_type", "count"])
     writer.writerows(rows)
 
 print("Report written to entity_report.csv")

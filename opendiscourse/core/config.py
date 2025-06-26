@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import AnyHttpUrl, PostgresDsn, validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -16,6 +16,12 @@ class Settings(BaseSettings):
 
     Loads settings from environment variables with the prefix 'OPENDISCOURSE_'.
     """
+    model_config = SettingsConfigDict(
+        extra='allow',
+        case_sensitive=True,
+        env_file='.env',
+        env_file_encoding='utf-8'
+    )
 
     # Application
     DEBUG: bool = False
@@ -64,11 +70,6 @@ class Settings(BaseSettings):
     # Security
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     SECURITY_ALGORITHM: str = "HS256"
-
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 # Global settings instance

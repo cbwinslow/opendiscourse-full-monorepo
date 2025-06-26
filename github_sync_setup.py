@@ -92,7 +92,7 @@ Example input:
   "timestamp": "2025-06-15T14:02Z"
 }
 ```
-"""
+""",
 }
 
 # 4. Define agent-log parser script
@@ -110,7 +110,11 @@ def parse_log_and_create_issue(log_path):
         entries = json.load(f)
     for entry in entries:
         title = f"[Agent Error] {entry['agent']} - {entry['error']}"
-        body = f"""**Agent**: {entry['agent']}\n**Error**: {entry['error']}\n**Time**: {entry['timestamp']}"""
+        body = (
+            f"**Agent**: {entry['agent']}\n"
+            f"**Error**: {entry['error']}\n"
+            f"**Time**: {entry['timestamp']}"
+        )
         repo.create_issue(title=title, body=body, labels=["agent-logs"])
 
 # Example usage

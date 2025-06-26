@@ -11,6 +11,11 @@ import psycopg2
 from dotenv import load_dotenv
 from transformers import pipeline
 
+try:
+    import torch
+except ImportError:
+    torch = None
+
 from .vector_database import VectorDatabase
 
 # Set up logging
@@ -94,17 +99,10 @@ def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
         # Process with transformers
         entities = ner_pipeline(text)
 
-        # Convert logits to probabilities
-        probabilities = torch.softmax(torch.tensor(entities), dim=-1)
-
-        # Get the predicted labels
-        torch.argmax(probabilities, dim=-1)
-
-        # Convert token IDs to tokens
+        # Extract relevant information from transformer output
         tokens = [entity["word"] for entity in entities]
-
-        # Get the predicted labels
         predicted_labels = [entity["entity"] for entity in entities]
+        scores = [entity["score"] for entity in entities]
 
         transformer_entities: list[dict[str, Any]] = []
         current_entity: Entity | None = None
@@ -127,7 +125,7 @@ def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
                         current_entity_text,
                         current_entity.label,
                         text,
-                        probabilities,
+                        scores,
                         transformer_entities,
                     )
                     current_entity = Entity(
@@ -143,7 +141,7 @@ def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
                 current_entity_text,
                 current_entity.label,
                 text,
-                probabilities,
+                scores,
                 transformer_entities,
             )
 
@@ -159,19 +157,21 @@ def _process_entity_text(
     entity_text: str,
     label: str,
     text: str,
-    probabilities: torch.Tensor,
+    scores: list[float],
     entities_list: list[dict[str, Any]],
 ) -> None:
     """Process a single entity's text and add it to the entities list."""
     clean_text = entity_text.replace("##", "").strip()
     start_pos = text.find(clean_text)
     if start_pos >= 0:  # Only add if found
+        # Use first score from the list as fallback
+        score = scores[0] if scores else 0.5
         entities_list.append(
             {
                 "entity": clean_text,
                 "start": start_pos,
                 "end": start_pos + len(clean_text),
-                "score": float(probabilities[0][start_pos].max().item()),
+                "score": float(score),
                 "label": label,
             }
         )
@@ -232,22 +232,6 @@ def _process_vector_db_entity(
         logging.error(
             "Error in vector database operation for entity %s: %s", entity_text, str(e)
         )
-        for pattern in patterns:
-            for match in re.finditer(pattern, text, re.IGNORECASE):
-                entity_text = match.group()
-                if entity_text not in seen_entities:
-                    seen_entities.add(entity_text)
-                    entities.append(
-                        {
-                            "text": entity_text,
-                            "type": entity_type,
-                            "start": match.start(),
-                            "end": match.end(),
-                            "confidence": 0.8,  # Custom pattern confidence
-                        }
-                    )
-
-    return entities
 
 
 def deduplicate_entities(entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -372,16 +356,17 @@ def save_entity(entity: dict[str, Any]) -> int:
             if not result:
                 msg = "Failed to save entity: no ID returned"
                 raise ValueError(msg)
-            entity_id = result["id"]
+            entity_id = result[0]  # Access by index, not key
             conn.commit()
             return entity_id
     except Exception as e:
         logging.error(f"Error saving entity: {e!s}")
-        conn.rollback()
+        if conn:
+            conn.rollback()
         return None
     finally:
-        cursor.close()
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def save_entity_relationship(relationship: dict[str, Any]) -> None:

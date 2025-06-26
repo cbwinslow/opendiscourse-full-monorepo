@@ -3,10 +3,10 @@
 import os
 from openai import OpenAI
 
-client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 texts = [
     "The quick brown fox jumps over the lazy dog",
-    "Congress passed a new bill regarding environmental policy"
+    "Congress passed a new bill regarding environmental policy",
 ]
 
 for t in texts:
