@@ -1,12 +1,31 @@
 {
-    "ansible.executionEnvironment.enabled": true,
-    "auto-close-tag.fullMode": true,
-    "basedpyright.analysis.diagnosticMode": "workspace",
-    "git.autofetch": "all",
-    "git.autoStash": true,
-    "git.enableCommitSigning": true,
-    "git.enableSmartCommit": false,
-    "git.rebaseWhenSync": true,
-    "gitlens.detectNestedRepositories": true,
-    "semgrep.scan.onlyGitDirty": false
+    // Python Configuration
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.formatting.provider": "black",
+    "python.analysis.typeCheckingMode": "off",
+
+    // Editor Configuration
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.python",
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.rulers": [88],
+    "editor.detectIndentation": false,
+
+    // Files
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+
+    // Language-specific settings
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+
+    // Disable spell checking by default
+    "cSpell.enabled": false
 }

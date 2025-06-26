@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def setup_jira_webhook(config: Dict[str, Any]) -> None:
+def setup_jira_webhook(config: dict[str, Any]) -> None:
     """Set up Jira webhook."""
     jira_config = config["jira"]
 
@@ -34,7 +34,7 @@ def setup_jira_webhook(config: Dict[str, Any]) -> None:
         print(f"Error setting up Jira webhook: {e!s}")
 
 
-def setup_github_webhook(config: Dict[str, Any]) -> None:
+def setup_github_webhook(config: dict[str, Any]) -> None:
     """Set up GitHub webhook."""
     github_config = config["github"]
 

@@ -10,14 +10,17 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import contextmanager
-from datetime import datetime
-from typing import Any, Dict, Iterator, Set, Type, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from sqlalchemy import Column, DateTime, Integer, create_engine, text
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.orm.decl_api import DeclarativeBase
 from sqlalchemy.orm.decl_api import declared_attr as _declared_attr
 from sqlalchemy.sql.schema import MetaData
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +36,7 @@ ModelType = TypeVar("ModelType", bound="Base")
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./opendiscourse.db")
 
 # Configure SQLAlchemy engine with connection pooling and timeouts
-engine_kwargs: Dict[str, Any] = {
+engine_kwargs: dict[str, Any] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,  # Recycle connections after 5 minutes
     "pool_size": 5,  # Number of connections to keep open
@@ -91,7 +94,7 @@ class Base(DeclarativeBase):
         # Handle acronyms and make plural
         return f"{name}s"
 
-    def to_dict(self, exclude: Set[str] | None = None) -> Dict[str, Any]:
+    def to_dict(self, exclude: set[str] | None = None) -> dict[str, Any]:
         """Convert model instance to dictionary.
 
         Args:
@@ -103,7 +106,7 @@ class Base(DeclarativeBase):
         if exclude is None:
             exclude = set()
 
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
         for column in self.__table__.columns:  # type: ignore[attr-defined]
             if column.name not in exclude:
                 value = getattr(self, column.name)
@@ -114,7 +117,7 @@ class Base(DeclarativeBase):
         return result
 
     @classmethod
-    def from_dict(cls: Type[_ModelT], data: Dict[str, Any]) -> _ModelT:
+    def from_dict(cls: type[_ModelT], data: dict[str, Any]) -> _ModelT:
         """Create a model instance from a dictionary.
 
         Args:
@@ -128,7 +131,7 @@ class Base(DeclarativeBase):
         filtered_data = {k: v for k, v in data.items() if k in columns}
         return cls(**filtered_data)
 
-    def update_from_dict(self, data: Dict[str, Any]) -> None:
+    def update_from_dict(self, data: dict[str, Any]) -> None:
         """Update model instance from a dictionary.
 
         Args:
