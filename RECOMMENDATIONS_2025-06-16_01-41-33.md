@@ -1,0 +1,2 @@
+- Implement unit tests for new ingestion functions using temporary files and mocks
+- Add pdfminer.six and markdown parsing libraries to requirements for full functionality

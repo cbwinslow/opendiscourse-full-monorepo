@@ -8,6 +8,7 @@ import time
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
+
 def download_collection(collection_code, start_date=None, end_date=None):
     """
     Download all packages from a specific collection
@@ -17,9 +18,9 @@ def download_collection(collection_code, start_date=None, end_date=None):
     """
     # Set default dates if not provided
     if not end_date:
-        end_date = datetime.now().strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
     if not start_date:
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
     # Create collection directory
     collection_dir = os.path.join(DATA_DIR, collection_code)
@@ -29,20 +30,21 @@ def download_collection(collection_code, start_date=None, end_date=None):
 
     # Get packages in the collection
     packages_url = f"{BASE_URL}/collections/{collection_code}/{start_date}/{end_date}"
-    
+
     try:
         response = requests.get(packages_url, headers=HEADERS)
         response.raise_for_status()
         packages = response.json()
-        
+
         # Download each package
-        for package in packages['packages']:
-            package_id = package['packageId']
+        for package in packages["packages"]:
+            package_id = package["packageId"]
             download_package(package_id, collection_dir)
             time.sleep(0.5)  # Rate limiting
-            
+
     except requests.exceptions.RequestException as e:
         print(f"Error downloading collection {collection_code}: {e}")
+
 
 def download_package(package_id, save_dir):
     """
@@ -52,24 +54,25 @@ def download_package(package_id, save_dir):
     """
     package_url = f"{BASE_URL}/packages/{package_id}/xml"
     save_path = os.path.join(save_dir, f"{package_id}.xml")
-    
+
     if os.path.exists(save_path):
         print(f"Package {package_id} already exists, skipping")
         return
-        
+
     try:
         response = requests.get(package_url, headers=HEADERS)
         response.raise_for_status()
-        
-        with open(save_path, 'wb') as f:
+
+        with open(save_path, "wb") as f:
             f.write(response.content)
         print(f"Downloaded package {package_id}")
-        
+
     except requests.exceptions.RequestException as e:
         print(f"Error downloading package {package_id}: {e}")
 
+
 if __name__ == "__main__":
     # Example usage - modify as needed
-    collections_to_download = ['BILLS', 'FR']  # Example collections
+    collections_to_download = ["BILLS", "FR"]  # Example collections
     for collection in collections_to_download:
         download_collection(collection)

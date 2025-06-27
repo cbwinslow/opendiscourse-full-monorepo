@@ -112,7 +112,7 @@ def update_document(doc_id):
 
 @app.route("/api/v1/documents/<int:doc_id>/versions", methods=["GET"])
 def get_document_versions(doc_id):
-    document = Document.query.get_or_404(doc_id)
+    Document.query.get_or_404(doc_id)
     versions = (
         DocumentVersion.query.filter_by(document_id=doc_id)
         .order_by(DocumentVersion.version_number.desc())

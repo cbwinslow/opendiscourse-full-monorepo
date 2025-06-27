@@ -40,6 +40,7 @@ def retry(
                     logging.warning(
                         f"Attempt {attempt + 1} failed for {func.__name__}. Retrying in {current_delay} seconds..."
                     )
+            return None
 
         return wrapper
 

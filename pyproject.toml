@@ -2,45 +2,51 @@
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "opendiscourse"
+version = "0.1.0"
+description = "OpenDiscourse - A platform for analyzing political discourse"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+authors = [
+    {name = "OpenDiscourse Team", email = "team@opendiscourse.org"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "sqlalchemy>=2.0.0",
+    "pydantic>=2.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.0.275",
+    "pre-commit>=3.0.0",
+    "ipython>=8.0.0"
+]
+
+docs = [
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=0.5.0"
+]
+
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ["py38"]
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 88
 target-version = "py38"
-select = [
-    "E",  # pycodestyle errors
-    "F",  # pyflakes
-    "I",  # isort
-    "C",  # flake8-comprehensions
-    "B",  # flake8-bugbear
-    "UP", # pyupgrade
-    "N",  # pep8-naming
-    "PL", # pylint
-]
+select = ["E", "F", "I"]  # Basic error checking
+unfixable = []
 
-[tool.ruff.per-file-ignores]
-"tests/*" = ["S101"]  # Allow use of assert in tests
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_functions = "test_*"
-python_classes = "Test*"
-addopts = "-v --cov=opendiscourse --cov-report=term-missing"
-
-[tool.coverage.run]
-source = ["opendiscourse"]
-omit = ["tests/*"]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "pass",
-    "raise ImportError",
-]
+[tool.ruff.isort]
+known-first-party = ["opendiscourse"]

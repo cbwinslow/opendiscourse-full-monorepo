@@ -1,4 +1,5 @@
 """Configuration for the GovInfo API."""
+
 import os
 
 API_KEY = os.getenv("GOVINFO_API_KEY", "YOUR_API_KEY_HERE")

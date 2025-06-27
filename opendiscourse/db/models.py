@@ -5,9 +5,8 @@ This module defines the database models using SQLAlchemy ORM.
 
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum as PyEnum
-from typing import TYPE_CHECKING, Any, Dict, Optional, TypeVar, final
+from typing import TYPE_CHECKING, Any, TypeVar, final
 
 from sqlalchemy import DateTime, Integer, String, text
 from sqlalchemy import Enum as SQLEnum
@@ -16,10 +15,12 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from typing_extensions import Self, override
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from sqlalchemy.orm import Mapper as MapperType
 
 # Type aliases
-JSONType = Dict[str, Any]  # Type alias for JSON/dict data
+JSONType = dict[str, Any]  # Type alias for JSON/dict data
 
 
 class EntityType(str, PyEnum):
@@ -62,7 +63,7 @@ class EntityBase(DeclarativeBase):
         __tablename__: str = ""
 
     # SQLAlchemy model configuration
-    __mapper_args__: Dict[str, Any] = {}
+    __mapper_args__: dict[str, Any] = {}
 
     # Mark as abstract to prevent SQLAlchemy from creating a table for this class
     __abstract__: bool = True
@@ -92,10 +93,10 @@ class Entity(EntityBase):
         index=True,
         doc="Type of the entity (person, organization, etc.)",
     )
-    description: Mapped[Optional[str]] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         String(2000), nullable=True, doc="Brief description of the entity"
     )
-    metadata_: Mapped[Dict[str, Any] | None] = mapped_column(
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata",  # Actual column name in the database
         JSONB,
         nullable=True,
@@ -118,10 +119,10 @@ class Entity(EntityBase):
         self,
         name: str,
         entity_type: EntityType,
-        description: Optional[str] = None,
-        metadata_: Optional[Dict[str, Any]] = None,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        description: str | None = None,
+        metadata_: dict[str, Any] | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a new Entity instance.
@@ -156,7 +157,7 @@ class Entity(EntityBase):
         """Return a string representation of the entity."""
         return f"<Entity(id={self.id}, name='{self.name}', type={self.entity_type})>"
 
-    def to_dict(self, exclude: Optional[set[str]] = None) -> dict[str, Any]:
+    def to_dict(self, exclude: set[str] | None = None) -> dict[str, Any]:
         """Convert the entity to a dictionary.
 
         Args:
@@ -198,12 +199,14 @@ class Entity(EntityBase):
         required_fields = {"name", "entity_type"}
         missing_fields = required_fields - set(data.keys())
         if missing_fields:
-            raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+            msg = f"Missing required fields: {', '.join(missing_fields)}"
+            raise ValueError(msg)
 
         try:
             entity_type = EntityType(data["entity_type"])
         except ValueError as e:
-            raise ValueError(f"Invalid entity type: {data['entity_type']}") from e
+            msg = f"Invalid entity type: {data['entity_type']}"
+            raise ValueError(msg) from e
 
         # Create the entity with the provided data
         entity = cls(
@@ -218,12 +221,14 @@ class Entity(EntityBase):
             try:
                 entity.created_at = data["created_at"]
             except (TypeError, ValueError) as e:
-                raise ValueError(f"Invalid created_at: {data['created_at']}") from e
+                msg = f"Invalid created_at: {data['created_at']}"
+                raise ValueError(msg) from e
 
         if "updated_at" in data and data["updated_at"] is not None:
             try:
                 entity.updated_at = data["updated_at"]
             except (TypeError, ValueError) as e:
-                raise ValueError(f"Invalid updated_at: {data['updated_at']}") from e
+                msg = f"Invalid updated_at: {data['updated_at']}"
+                raise ValueError(msg) from e
 
         return entity
