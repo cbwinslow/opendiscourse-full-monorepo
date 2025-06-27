@@ -84,19 +84,27 @@ This document provides an overview of the files and folders in the `opendiscours
 ---
 
 ## Server Scripts
+## Server Scripts
 
 | File/Folder                                 | Purpose/Function                                                                                   |
 |---------------------------------------------|----------------------------------------------------------------------------------------------------|
-| `server/scripts/dbMigrate.ts`               | Runs database migrations using Drizzle ORM.                                                        |
+| `server/scripts/dbMigrate.ts`               | Runs database migrations using Drizzle ORM.                                        |
 | `server/scripts/dbSeed.ts`                  | Scaffold for seeding the database with initial data.                                               |
 | `server/scripts/dbHealthCheck.ts`           | Checks database connectivity and prints status.                                                    |
 | `server/scripts/nimApiHealthCheck.ts`       | Checks NVIDIA NIM API key and connectivity.                                                        |
 | `server/scripts/updateNimModelConfig.ts`    | Scaffold for updating NIM model config in `k8s/configmap.yaml`.                                    |
 | `server/scripts/dbBackup.sh`                | Backs up the PostgreSQL database from the Kubernetes pod.                                          |
 | `server/scripts/dbRestore.sh`               | Restores the PostgreSQL database to the Kubernetes pod from a backup.                              |
-| `server/scripts/delegateToCodex.ts`           | Delegates coding tasks to OpenAI Codex/ChatGPT via API and saves the result.                      |
-| `server/scripts/delegateToOllama.ts`           | Delegates coding tasks to Ollama (local LLM) via REST API and saves the result.                  |
-
+| `server/scripts/delegateToCodex.ts`         | Delegates coding tasks to OpenAI Codex/ChatGPT via API and saves the result.                      |
+| `server/scripts/delegateToOllama.ts`        | Delegates coding tasks to Ollama (local LLM) via REST API and saves the result.                  |
+| `server/scripts/ollamaApiHealthCheck.ts`    | Verifies Ollama API health, model availability, and connection status.                            |
+| `server/scripts/ollamaModelConfig.ts`       | Manages Ollama model configurations and settings.                                                 |
+| `server/scripts/healthCheck.ts`             | Comprehensive health check script for all system components.                                      |
+| `server/scripts/monitorAgent.ts`            | Monitors agent health, resource usage, and performance metrics.                                    |
+| `server/scripts/agentOrchestrator.ts`       | Orchestrates multi-agent workflows and task delegation.                                           |
+| `server/scripts/agentMetrics.ts`            | Collects and reports agent performance and reliability metrics.                                    |
+| `server/scripts/vectorStoreManager.ts`      | Manages vector store configuration, updates, and maintenance.                                      |
+| `server/scripts/ragMonitor.ts`              | Monitors RAG performance, latency, and result quality.                                            |
 ---
 
 ## Shared
