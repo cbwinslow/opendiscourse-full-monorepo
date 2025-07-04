@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import atexit
 import logging
+import os
 from pathlib import Path
 from typing import TypeVar, cast, final
 
@@ -14,9 +16,15 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 from typing_extensions import NotRequired, TypedDict, override  # noqa: F401
 
+# Load environment variables early
+load_dotenv()
+
 # Type aliases
 DocumentScore = tuple[dict[str, str], float]
 DocumentMetadata = dict[str, str]  # Enforce string values for metadata
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
 
 
 @final
@@ -26,10 +34,23 @@ class SentenceTransformerEmbeddings(Embeddings):
     def __init__(
         self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     ) -> None:
-        """Initialize with model name."""
-        self.model: SentenceTransformer = SentenceTransformer(
-            model_name, device="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        """Initialize with model name.
+        
+        The model is loaded lazily on first use to save resources.
+        """
+        self.model_name = model_name
+        self._model: SentenceTransformer | None = None
+
+    @property
+    def model(self) -> SentenceTransformer:
+        """Lazily load and return the model."""
+        if self._model is None:
+            logger.info("Loading sentence transformer model: %s", self.model_name)
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            logger.debug("Using device: %s", device)
+            self._model = SentenceTransformer(self.model_name, device=device)
+            logger.info("Model loaded successfully")
+        return self._model
 
     @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -63,15 +84,12 @@ class SentenceTransformerEmbeddings(Embeddings):
 
 T = TypeVar("T")
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("vector_database.log"), logging.StreamHandler()],
-)
-
-# Load environment variables
-load_dotenv()
+# Configuration from environment variables
+DEFAULT_STORAGE_DIRECTORY = os.getenv("VECTOR_DB_STORAGE_DIR", "./chroma_db")
+DEFAULT_EMBEDDING_MODEL = os.getenv("VECTOR_DB_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+DEFAULT_COLLECTION_NAME = os.getenv("VECTOR_DB_COLLECTION_NAME", "documents")
+DEFAULT_CHUNK_SIZE = int(os.getenv("VECTOR_DB_CHUNK_SIZE", "1000"))
+DEFAULT_CHUNK_OVERLAP = int(os.getenv("VECTOR_DB_CHUNK_OVERLAP", "200"))
 
 
 class VectorDatabaseError(Exception):
@@ -92,43 +110,103 @@ class VectorDatabase:
     This class provides methods to add, search, and manage documents with their
     vector embeddings. It uses sentence-transformers for generating embeddings
     and ChromaDB for efficient similarity search.
+    
+    Configuration can be provided via environment variables:
+    - VECTOR_DB_STORAGE_DIR: Directory to persist the database
+    - VECTOR_DB_EMBEDDING_MODEL: Name of the sentence transformer model
+    - VECTOR_DB_COLLECTION_NAME: Name of the collection to store documents
+    - VECTOR_DB_CHUNK_SIZE: Size of text chunks for processing
+    - VECTOR_DB_CHUNK_OVERLAP: Overlap between text chunks
     """
 
     persist_directory: Path
     embeddings: SentenceTransformerEmbeddings
     collection_name: str
+    chunk_size: int
+    chunk_overlap: int
     _vector_store: Chroma | None = None
+    _shutdown_registered: bool = False
 
     @property
     def vector_store(self) -> Chroma:
         """Lazily initialize and return the vector store."""
         if self._vector_store is None:
+            logger.info("Initializing ChromaDB vector store...")
             self._vector_store = Chroma(
                 collection_name=self.collection_name,
                 embedding_function=self.embeddings,
                 persist_directory=str(self.persist_directory),
             )
+            logger.info("Vector store initialized successfully")
+            
+            # Register shutdown handler if not already done
+            if not self._shutdown_registered:
+                atexit.register(self._shutdown)
+                self._shutdown_registered = True
+                
         return cast("Chroma", self._vector_store)
 
     def __init__(
         self,
-        embeddings_model: str = "sentence-transformers/all-MiniLM-L6-v2",
-        collection_name: str = "documents",
-        persist_directory: str = "./chroma_db",
+        embeddings_model: str | None = None,
+        collection_name: str | None = None,
+        persist_directory: str | None = None,
+        chunk_size: int | None = None,
+        chunk_overlap: int | None = None,
     ) -> None:
         """Initialize the VectorDatabase.
 
         Args:
             embeddings_model: Name of the sentence transformer model to use for
-                embeddings.
+                embeddings. If None, uses environment variable or default.
             collection_name: Name of the collection to store documents in.
+                If None, uses environment variable or default.
             persist_directory: Directory to persist the database to.
+                If None, uses environment variable or default.
+            chunk_size: Size of text chunks for processing.
+                If None, uses environment variable or default.
+            chunk_overlap: Overlap between text chunks.
+                If None, uses environment variable or default.
         """
-        self.persist_directory = Path(persist_directory)
-        self.embeddings = SentenceTransformerEmbeddings(model_name=embeddings_model)
-        self.collection_name = collection_name
+        # Use provided values or fall back to environment variables/defaults
+        self.persist_directory = Path(persist_directory or DEFAULT_STORAGE_DIRECTORY)
+        model_name = embeddings_model or DEFAULT_EMBEDDING_MODEL
+        self.embeddings = SentenceTransformerEmbeddings(model_name=model_name)
+        self.collection_name = collection_name or DEFAULT_COLLECTION_NAME
+        self.chunk_size = chunk_size or DEFAULT_CHUNK_SIZE
+        self.chunk_overlap = chunk_overlap or DEFAULT_CHUNK_OVERLAP
         self._vector_store: Chroma | None = None
+        self._shutdown_registered = False
+        
+        logger.info("VectorDatabase configured with:")
+        logger.info("  Storage directory: %s", self.persist_directory)
+        logger.info("  Embedding model: %s", model_name)
+        logger.info("  Collection name: %s", self.collection_name)
+        logger.info("  Chunk size: %d", self.chunk_size)
+        logger.info("  Chunk overlap: %d", self.chunk_overlap)
+        
         self._ensure_initialized()
+
+    def _shutdown(self) -> None:
+        """Graceful shutdown to flush or close resources."""
+        logger.info("Shutting down VectorDatabase...")
+        try:
+            if self._vector_store is not None:
+                # Force persistence of any pending changes
+                self._vector_store.persist()
+                logger.info("Vector store persisted successfully")
+        except Exception as e:
+            logger.warning("Error during vector store shutdown: %s", str(e))
+        
+        try:
+            # Clear model from memory if loaded
+            if hasattr(self.embeddings, '_model') and self.embeddings._model is not None:
+                del self.embeddings._model
+                logger.debug("Embedding model cleared from memory")
+        except Exception as e:
+            logger.warning("Error clearing embedding model: %s", str(e))
+            
+        logger.info("VectorDatabase shutdown completed")
 
     def _ensure_initialized(self) -> None:
         """Ensure the vector store is initialized.
@@ -136,7 +214,14 @@ class VectorDatabase:
         Creates the persist directory if it doesn't exist.
         The vector store itself is lazily initialized when accessed.
         """
-        self.persist_directory.mkdir(parents=True, exist_ok=True)
+        try:
+            self.persist_directory.mkdir(parents=True, exist_ok=True)
+            logger.debug("Storage directory ensured: %s", self.persist_directory)
+        except Exception as e:
+            logger.error("Failed to create storage directory: %s", str(e))
+            raise VectorDatabaseInitializationError(
+                f"Failed to create storage directory {self.persist_directory}: {e}"
+            ) from e
 
     def _chunk_text(self, content: str) -> list[str]:
         """Split text into chunks.
@@ -148,7 +233,7 @@ class VectorDatabase:
             List of chunks.
         """
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000, chunk_overlap=200
+            chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
         )
         return text_splitter.split_text(content)
 
@@ -178,19 +263,19 @@ class VectorDatabase:
                 chunk_id = f"{document_id}_{i}"
                 chunk_metadata = {
                     **metadata,
-                    "chunk_index": i,
+                    "chunk_index": str(i),  # Ensure string type for metadata
                     "document_id": str(document_id),
-                    "total_chunks": len(chunks),
+                    "total_chunks": str(len(chunks)),
                 }
                 self.vector_store.add_texts(
                     texts=[chunk], metadatas=[chunk_metadata], ids=[chunk_id]
                 )
 
-            logging.info("Added document %s with %d chunks", document_id, len(chunks))
+            logger.info("Added document %s with %d chunks", document_id, len(chunks))
 
         except Exception as e:
             error_msg = f"Failed to add document {document_id}: {e!s}"
-            logging.error(error_msg)
+            logger.error(error_msg)
             raise VectorDatabaseOperationError(error_msg) from e
 
     def search(
@@ -236,7 +321,7 @@ class VectorDatabase:
 
         except Exception as e:
             error_msg = f"Search failed: {e!s}"
-            logging.exception("Search operation failed")
+            logger.exception("Search operation failed")
             raise VectorDatabaseOperationError(error_msg) from e
 
     def get_document_chunks(

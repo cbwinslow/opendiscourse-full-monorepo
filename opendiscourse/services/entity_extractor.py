@@ -2,37 +2,63 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Generator, Optional
 
 import psycopg2
 from dotenv import load_dotenv
-from transformers import pipeline
 
 try:
     import torch
 except ImportError:
     torch = None
 
-from .vector_database import VectorDatabase
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("entity_extractor.log"), logging.StreamHandler()],
-)
+# Get logger for this module
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
-# Initialize transformers pipeline
-ner_pipeline = pipeline("ner", model="dslim/bert-base-NER")
+# Global variables for lazy loading
+_ner_pipeline = None
+_vector_db = None
 
-# Initialize vector database
-vector_db = VectorDatabase()
+def get_ner_pipeline():
+    """Lazy-load the NER pipeline to reduce startup time."""
+    global _ner_pipeline
+    if _ner_pipeline is None:
+        logger.info("Loading NER pipeline (dslim/bert-base-NER)...")
+        try:
+            from transformers import pipeline
+            _ner_pipeline = pipeline("ner", model="dslim/bert-base-NER")
+            logger.info("NER pipeline loaded successfully")
+        except ImportError as e:
+            logger.error("Failed to import transformers: %s", str(e))
+            raise ImportError("transformers library is required for entity extraction") from e
+        except Exception as e:
+            logger.error("Failed to load NER pipeline: %s", str(e))
+            raise RuntimeError("Failed to initialize NER pipeline") from e
+    return _ner_pipeline
+
+
+def get_vector_db():
+    """Lazy-load the vector database to reduce startup time."""
+    global _vector_db
+    if _vector_db is None:
+        logger.info("Initializing vector database...")
+        try:
+            from .vector_database import VectorDatabase
+            _vector_db = VectorDatabase()
+            logger.info("Vector database initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize vector database: %s", str(e))
+            raise RuntimeError("Failed to initialize vector database") from e
+    return _vector_db
+
 
 # Define entity patterns
 ENTITY_PATTERNS = {
@@ -82,20 +108,52 @@ class Entity:
             raise ValueError(msg)
 
 
-def get_db_connection():
-    """Get a database connection."""
-    return psycopg2.connect(
-        dbname="opendiscourse",
-        user="postgres",
-        password="postgres",
-        host="localhost",
-        port="5432",
-    )
+@contextmanager
+def get_db_connection() -> Generator[psycopg2.extensions.connection, None, None]:
+    """Context manager for database connections.
+    
+    Yields:
+        A PostgreSQL database connection
+        
+    Raises:
+        psycopg2.OperationalError: If connection fails
+    """
+    connection = None
+    try:
+        # Use environment variables for database configuration
+        connection = psycopg2.connect(
+            dbname=os.getenv("DB_NAME", "opendiscourse"),
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", "postgres"),
+            host=os.getenv("DB_HOST", "localhost"),
+            port=os.getenv("DB_PORT", "5432"),
+        )
+        yield connection
+        
+    except psycopg2.Error as e:
+        logger.error("Database connection error: %s", str(e))
+        if connection:
+            connection.rollback()
+        raise
+    except Exception as e:
+        logger.error("Unexpected error with database connection: %s", str(e))
+        if connection:
+            connection.rollback()
+        raise
+    finally:
+        if connection:
+            try:
+                connection.close()
+            except Exception as e:
+                logger.warning("Error closing database connection: %s", str(e))
 
 
 def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
     """Extract entities from text using transformers and custom patterns."""
     try:
+        # Get the lazy-loaded NER pipeline
+        ner_pipeline = get_ner_pipeline()
+        
         # Process with transformers
         entities = ner_pipeline(text)
 
@@ -149,7 +207,7 @@ def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
 
     except Exception as e:
         error_msg = f"Error extracting entities: {e!s}"
-        logging.error(error_msg, exc_info=True)
+        logger.error(error_msg, exc_info=True)
         raise RuntimeError(error_msg) from e
 
 
@@ -319,7 +377,58 @@ def extract_declarations(
     return declarations
 
 
-def save_entity(entity: dict[str, Any]) -> int:
+class DatabaseHelper:
+    """Helper class for database operations with error handling and commits."""
+    
+    @staticmethod
+    def execute_query_with_result(query: str, params: tuple, operation_name: str) -> Optional[Any]:
+        """Execute a query that returns a result with proper error handling.
+        
+        Args:
+            query: SQL query to execute
+            params: Parameters for the query
+            operation_name: Name of the operation for logging
+            
+        Returns:
+            Query result or None if failed
+        """
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, params)
+                    result = cursor.fetchone()
+                    conn.commit()
+                    logger.debug("Successfully completed %s", operation_name)
+                    return result
+        except Exception as e:
+            logger.error("Error in %s: %s", operation_name, str(e), exc_info=True)
+            return None
+    
+    @staticmethod
+    def execute_query_no_result(query: str, params: tuple, operation_name: str) -> bool:
+        """Execute a query that doesn't return a result with proper error handling.
+        
+        Args:
+            query: SQL query to execute
+            params: Parameters for the query
+            operation_name: Name of the operation for logging
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, params)
+                    conn.commit()
+                    logger.debug("Successfully completed %s", operation_name)
+                    return True
+        except Exception as e:
+            logger.error("Error in %s: %s", operation_name, str(e), exc_info=True)
+            return False
+
+
+def save_entity(entity: dict[str, Any]) -> Optional[int]:
     """Save entity to database.
 
     Args:
@@ -329,175 +438,213 @@ def save_entity(entity: dict[str, Any]) -> int:
                - confidence: Optional confidence score
 
     Returns:
-        int: The database ID of the saved entity
+        int: The database ID of the saved entity, or None if failed
 
     Raises:
-        Exception: If there's an error saving the entity
+        ValueError: If entity data is invalid
     """
-    conn = None
-    try:
-        conn = get_db_connection()
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO entities (text, type, metadata, created_at, updated_at)
-                VALUES (%s, %s, %s, NOW(), NOW())
-                ON CONFLICT (text, type) DO UPDATE
-                SET updated_at = NOW()
-                RETURNING id
-            """,
-                (
-                    entity["text"],
-                    entity["type"],
-                    json.dumps({"confidence": entity.get("confidence", 0.0)}),
-                ),
-            )
-            result = cur.fetchone()
-            if not result:
-                msg = "Failed to save entity: no ID returned"
-                raise ValueError(msg)
-            entity_id = result[0]  # Access by index, not key
-            conn.commit()
-            return entity_id
-    except Exception as e:
-        logging.error(f"Error saving entity: {e!s}")
-        if conn:
-            conn.rollback()
-        return None
-    finally:
-        if conn:
-            conn.close()
+    if not entity.get("text") or not entity.get("type"):
+        raise ValueError("Entity must have 'text' and 'type' fields")
+    
+    query = """
+        INSERT INTO entities (text, type, metadata, created_at, updated_at)
+        VALUES (%s, %s, %s, NOW(), NOW())
+        ON CONFLICT (text, type) DO UPDATE
+        SET updated_at = NOW()
+        RETURNING id
+    """
+    
+    params = (
+        entity["text"],
+        entity["type"],
+        json.dumps({"confidence": entity.get("confidence", 0.0)}),
+    )
+    
+    result = DatabaseHelper.execute_query_with_result(query, params, "save entity")
+    return result[0] if result else None
 
 
-def save_entity_relationship(relationship: dict[str, Any]) -> None:
-    """Save entity relationship to database."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute(
-            """
+def save_entity_relationship(relationship: dict[str, Any]) -> bool:
+    """Save entity relationship to database.
+    
+    Args:
+        relationship: Dictionary containing relationship information
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    query = """
         INSERT INTO entity_relationships (entity_id, related_entity_id, relationship_type, confidence, created_at)
         VALUES (%s, %s, %s, %s, %s)
-    """.strip(),
-            (
-                relationship["entity_id"],
-                relationship["related_entity_id"],
-                relationship["relationship_type"],
-                relationship.get("confidence", 0.5),
-                datetime.now(),
-            ),
-        )
-
-        conn.commit()
-    except Exception as e:
-        logging.error(f"Error saving entity relationship: {e!s}")
-    finally:
-        cursor.close()
-        conn.close()
+    """
+    
+    params = (
+        relationship["entity_id"],
+        relationship["related_entity_id"],
+        relationship["relationship_type"],
+        relationship.get("confidence", 0.5),
+        datetime.now(),
+    )
+    
+    return DatabaseHelper.execute_query_no_result(query, params, "save entity relationship")
 
 
 def save_entity_mention(
     mention: dict[str, Any], document_id: int, entity_id: int
-) -> None:
-    """Save entity mention to database."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute(
-            "INSERT INTO entity_mentions (text, type, confidence, document_id, entity_id, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
-            (
-                mention["text"],
-                mention["type"],
-                mention["confidence"],
-                document_id,
-                entity_id,
-                datetime.now(),
-            ),
-        )
-
-        conn.commit()
-    except Exception as e:
-        logging.error(f"Error saving entity mention: {e!s}")
-    finally:
-        cursor.close()
-        conn.close()
-
-
-def save_declaration(declaration: dict[str, Any], document_id: int) -> None:
-    """Save declaration to database."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute(
-            "INSERT INTO declarations (document_id, entity_id, declaration_text, declaration_type, confidence, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
-            (
-                document_id,
-                declaration["entity_id"],
-                declaration["declaration_text"],
-                declaration["declaration_type"],
-                declaration["confidence"],
-                datetime.now(),
-            ),
-        )
-
-        conn.commit()
-    except Exception as e:
-        logging.error(f"Error saving declaration: {e!s}")
-    finally:
-        cursor.close()
-        conn.close()
+) -> bool:
+    """Save entity mention to database.
+    
+    Args:
+        mention: Dictionary containing mention information
+        document_id: ID of the document containing the mention
+        entity_id: ID of the entity being mentioned
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    query = """
+        INSERT INTO entity_mentions (text, type, confidence, document_id, entity_id, created_at) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """
+    
+    params = (
+        mention["text"],
+        mention["type"],
+        mention["confidence"],
+        document_id,
+        entity_id,
+        datetime.now(),
+    )
+    
+    return DatabaseHelper.execute_query_no_result(query, params, "save entity mention")
+def save_declaration(declaration: dict[str, Any], document_id: int) -> bool:
+    """Save declaration to database.
+    
+    Args:
+        declaration: Dictionary containing declaration information
+        document_id: ID of the document containing the declaration
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    query = """
+        INSERT INTO declarations (document_id, entity_id, declaration_text, declaration_type, confidence, created_at) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """
+    
+    params = (
+        document_id,
+        declaration["entity_id"],
+        declaration["declaration_text"],
+        declaration["declaration_type"],
+        declaration["confidence"],
+        datetime.now(),
+    )
+    
+    return DatabaseHelper.execute_query_no_result(query, params, "save declaration")
 
 
 def process_document(document_id: int, content: str, metadata: dict[str, str]) -> None:
-    """Process a document for entity extraction."""
+    """Process a document for entity extraction.
+    
+    Args:
+        document_id: ID of the document to process
+        content: Text content of the document
+        metadata: Metadata associated with the document
+    """
     try:
+        logger.info("Starting entity extraction for document %d", document_id)
+        
         # Extract entities with continuous discovery
         entities = extract_entities(content, document_id)
+        logger.debug("Extracted %d entities from document %d", len(entities), document_id)
 
         # Deduplicate entities
         entities = deduplicate_entities(entities)
+        logger.debug("After deduplication: %d entities for document %d", len(entities), document_id)
 
         # Infer relationships
         relationships = infer_relationships(entities, content)
+        logger.debug("Inferred %d relationships for document %d", len(relationships), document_id)
 
         # Extract declarations
         declarations = extract_declarations(entities, content)
+        logger.debug("Extracted %d declarations for document %d", len(declarations), document_id)
 
-        # Save to vector database
+        # Save to vector database using lazy-loaded instance
+        vector_db = get_vector_db()
         vector_db.add_document(document_id, content, metadata)
+        logger.debug("Added document %d to vector database", document_id)
 
         # Save entities and relationships
+        saved_entity_count = 0
         for entity in entities:
             entity_id = save_entity(entity)
             if entity_id:
                 save_entity_mention(entity, document_id, entity_id)
+                saved_entity_count += 1
+            else:
+                logger.warning("Failed to save entity: %s", entity.get("text", "unknown"))
 
+        saved_relationship_count = 0
         for relationship in relationships:
-            save_entity_relationship(relationship)
+            if save_entity_relationship(relationship):
+                saved_relationship_count += 1
 
+        saved_declaration_count = 0
         for declaration in declarations:
-            save_declaration(declaration, document_id)
+            if save_declaration(declaration, document_id):
+                saved_declaration_count += 1
+
+        logger.info(
+            "Completed processing document %d: %d entities, %d relationships, %d declarations saved",
+            document_id, saved_entity_count, saved_relationship_count, saved_declaration_count
+        )
 
     except Exception as e:
-        logging.error(f"Error processing document {document_id}: {e!s}")
+        logger.error("Error processing document %d: %s", document_id, str(e), exc_info=True)
+        raise
 
 
 def main():
     """Main function to process documents."""
-    logging.info("Starting entity extraction...")
+    logger.info("Starting entity extraction...")
 
     # Get unprocessed documents
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
     try:
-        cursor.execute(
-            """
-            SELECT id, content
-            FROM documents
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT id, content, title
+                    FROM documents
+                    WHERE content IS NOT NULL 
+                    AND LENGTH(content) > 0
+                    ORDER BY id
+                    """
+                )
+                documents = cursor.fetchall()
+                
+                logger.info("Found %d documents to process", len(documents))
+                
+                for doc_id, content, title in documents:
+                    try:
+                        logger.info("Processing document %d: %s", doc_id, title or "Untitled")
+                        metadata = {"title": title or "Untitled"}
+                        process_document(doc_id, content, metadata)
+                    except Exception as e:
+                        logger.error("Failed to process document %d: %s", doc_id, str(e))
+                        continue
+                        
+        logger.info("Entity extraction completed")
+        
+    except Exception as e:
+        logger.error("Error in main entity extraction process: %s", str(e), exc_info=True)
+        raise
+
+
+if __name__ == "__main__":
+    main()
             WHERE status = 'completed'
             AND NOT EXISTS (SELECT 1 FROM entity_mentions WHERE document_id = documents.id)
             LIMIT 100
