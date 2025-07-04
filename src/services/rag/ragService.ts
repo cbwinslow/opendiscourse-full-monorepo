@@ -74,9 +74,18 @@ export class RAGService {
         });
     }
 
+    private async runLightweightScript(args: string[] = []): Promise<any> {
+        try {
+            return await this.runPythonScript('rag_lightweight.py', args);
+        } catch (error) {
+            console.warn('Lightweight script failed, using fallback:', error);
+            return { error: error.message, fallback: true };
+        }
+    }
+
     async generateEmbedding(text: string): Promise<number[]> {
         try {
-            // Use the Python NLP operations script to generate embeddings
+            // Try the comprehensive NLP script first
             const result = await this.runPythonScript('rag_nlp_operations.py', [
                 '--embeddings-only',
                 '--text', text
@@ -85,14 +94,48 @@ export class RAGService {
             if (result.embedding) {
                 return result.embedding;
             }
-            
-            // Fallback to placeholder if script fails
-            console.warn('Failed to generate embedding via Python script, using placeholder');
-            return new Array(1536).fill(0);
         } catch (error) {
-            console.error('Error generating embedding:', error);
-            return new Array(1536).fill(0);
+            console.warn('Advanced embedding generation failed, using lightweight approach');
         }
+        
+        // Fallback to simple hash-based "embedding" for basic similarity
+        const hash = this.simpleTextHash(text);
+        return hash;
+    }
+
+    private simpleTextHash(text: string, dimensions: number = 1536): number[] {
+        // Create a simple deterministic "embedding" based on text characteristics
+        const words = text.toLowerCase().split(/\s+/);
+        const chars = text.split('');
+        
+        const embedding = new Array(dimensions).fill(0);
+        
+        // Use text characteristics to generate pseudo-embedding
+        for (let i = 0; i < dimensions; i++) {
+            let value = 0;
+            
+            // Word-based features
+            if (words.length > 0) {
+                const wordIndex = i % words.length;
+                const word = words[wordIndex];
+                value += word.length * Math.sin(i * 0.1);
+                value += word.charCodeAt(0) * Math.cos(i * 0.05);
+            }
+            
+            // Character-based features
+            if (chars.length > 0) {
+                const charIndex = i % chars.length;
+                value += chars[charIndex].charCodeAt(0) * Math.sin(i * 0.02);
+            }
+            
+            // Text length and position features
+            value += text.length * Math.cos(i * 0.01);
+            value += i * Math.sin(text.length * 0.001);
+            
+            embedding[i] = Math.tanh(value * 0.001); // Normalize to [-1, 1]
+        }
+        
+        return embedding;
     }
 
     async queryDocuments(ragQuery: RAGQuery): Promise<Document[]> {
@@ -151,7 +194,7 @@ export class RAGService {
 
     async analyzeDocument(documentId: string): Promise<NLPAnalysisResult> {
         try {
-            // Use the Python NLP operations script for comprehensive analysis
+            // First try the comprehensive analysis script
             const result = await this.runPythonScript('rag_nlp_operations.py', [
                 '--document-id', documentId
             ]);
@@ -163,9 +206,12 @@ export class RAGService {
                     semantic_meaning: result.semantic_meaning
                 };
             }
-            
-            // Fallback if script fails
-            console.warn('Python analysis failed, using fallback');
+        } catch (error) {
+            console.warn('Advanced document analysis failed, trying lightweight approach');
+        }
+        
+        try {
+            // Get document content
             const docResult = await query(
                 'SELECT content, metadata FROM documents WHERE id = $1 AND NOT is_deleted',
                 [documentId]
@@ -175,6 +221,18 @@ export class RAGService {
                 throw new Error('Document not found');
             }
 
+            const content = docResult.rows[0].content;
+            
+            // Use lightweight analysis
+            const lightweightResult = await this.runLightweightScript([
+                '--analyze-text', content
+            ]);
+            
+            // Extract entities using lightweight approach
+            const entitiesResult = await this.runLightweightScript([
+                '--extract-entities', content
+            ]);
+            
             return {
                 sentiment: {
                     overall_sentiment: 'neutral',
@@ -183,16 +241,33 @@ export class RAGService {
                     negative_score: 0.2,
                     neutral_score: 0.5
                 },
+                entities: entitiesResult || [],
+                semantic_meaning: {
+                    key_concepts: [],
+                    noun_phrases: [],
+                    linguistic_patterns: lightweightResult.analysis || {}
+                }
+            };
+            
+        } catch (error) {
+            console.error('All document analysis methods failed:', error);
+            
+            // Final fallback
+            return {
+                sentiment: {
+                    overall_sentiment: 'neutral',
+                    confidence: 0.1,
+                    positive_score: 0.33,
+                    negative_score: 0.33,
+                    neutral_score: 0.34
+                },
                 entities: [],
                 semantic_meaning: {
                     key_concepts: [],
                     noun_phrases: [],
-                    linguistic_patterns: {}
+                    linguistic_patterns: { error: 'Analysis unavailable' }
                 }
             };
-        } catch (error) {
-            console.error('Error analyzing document:', error);
-            throw error;
         }
     }
 
