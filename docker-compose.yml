@@ -21,14 +21,14 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - "8000:8000"
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: opendiscourse
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      VECTORDB_HOST: chroma
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: opendiscourse
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      CHROMA_HOST: chroma
     depends_on:
       - postgres
       - chroma

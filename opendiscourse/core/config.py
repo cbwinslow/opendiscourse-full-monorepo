@@ -1,67 +1,37 @@
-"""Configuration settings for OpenDiscourse.
+"""Simplified configuration settings for OpenDiscourse."""
 
-This module handles the loading and validation of application settings
-from environment variables and configuration files.
-"""
-
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-
-from pydantic import AnyHttpUrl, PostgresDsn, validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from typing import List
 
 
-class Settings(BaseSettings):
-    """Application settings.
-
-    Loads settings from environment variables with the prefix 'OPENDISCOURSE_'.
-    """
-    model_config = SettingsConfigDict(
-        extra='allow',
-        case_sensitive=True,
-        env_file='.env',
-        env_file_encoding='utf-8'
-    )
+class Settings:
+    """Application settings."""
 
     # Application
-    DEBUG: bool = False
-    ENVIRONMENT: str = "development"
-    SECRET_KEY: str = "change-me-in-production"
+    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-in-production")
     API_V1_STR: str = "/api/v1"
 
     # Backend
-    BACKEND_CORS_ORIGINS: List[Union[str, AnyHttpUrl]] = [
+    BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost",
-        "http://localhost:3000",  # Frontend default port
+        "http://localhost:3000",
     ]
 
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        """Parse CORS origins."""
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
-
     # Database
-    POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    POSTGRES_DB: str = "opendiscourse"
-    DATABASE_URI: Optional[PostgresDsn] = None
+    POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
+    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "opendiscourse")
 
-    @validator("DATABASE_URI", pre=True)
-    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
-        """Assemble the database connection string."""
-        if isinstance(v, str):
-            return v
-        # Compose the connection string manually for Pydantic v2+
-        user = values.get("POSTGRES_USER")
-        password = values.get("POSTGRES_PASSWORD")
-        host = values.get("POSTGRES_SERVER")
-        db = values.get("POSTGRES_DB")
-        return f"postgresql://{user}:{password}@{host}/{db}"
+    @property
+    def DATABASE_URI(self) -> str:
+        """Get database connection string."""
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+        )
 
     # API
     API_PREFIX: str = "/api"
