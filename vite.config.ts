@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'web/index.html'),
         rag: resolve(__dirname, 'web/rag_interface.html'),
+        data: resolve(__dirname, 'web/data_viewer.html'),
       },
     },
   },

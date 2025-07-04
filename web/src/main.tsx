@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthGuard } from '@/components/Auth';
 import { Layout, PageHeader, Card, EmptyState } from '@/components/Layout';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import './main.css';
@@ -202,7 +203,9 @@ function HomePage() {
 function App() {
   return (
     <AuthProvider>
-      <HomePage />
+      <AuthGuard>
+        <HomePage />
+      </AuthGuard>
     </AuthProvider>
   );
 }

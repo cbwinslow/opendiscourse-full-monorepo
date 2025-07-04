@@ -2,14 +2,14 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthGuard } from '@/components/Auth';
-import { RAGInterface } from '@/components/RAGInterface';
+import { DocumentViewer } from '@/components/DocumentViewer';
 import './main.css';
 
 function App() {
   return (
     <AuthProvider>
       <AuthGuard>
-        <RAGInterface />
+        <DocumentViewer />
       </AuthGuard>
     </AuthProvider>
   );
