@@ -8,12 +8,25 @@ import os
 from pathlib import Path
 from typing import TypeVar, cast, final
 
-import torch
+try:
+    import torch
+except ImportError:
+    torch = None
+
 from dotenv import load_dotenv
-from langchain_community.vectorstores import Chroma
-from langchain_core.embeddings import Embeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
+
+try:
+    from langchain_community.vectorstores import Chroma
+    from langchain_core.embeddings import Embeddings
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from sentence_transformers import SentenceTransformer
+except ImportError as e:
+    logging.warning(f"LangChain or sentence-transformers not available: {e}")
+    Chroma = None
+    Embeddings = None
+    RecursiveCharacterTextSplitter = None
+    SentenceTransformer = None
+
 from typing_extensions import NotRequired, TypedDict, override  # noqa: F401
 
 # Load environment variables early
@@ -27,30 +40,27 @@ DocumentMetadata = dict[str, str]  # Enforce string values for metadata
 logger = logging.getLogger(__name__)
 
 
-@final
-class SentenceTransformerEmbeddings(Embeddings):
-    """Wrapper around SentenceTransformer models for use with LangChain."""
+if Embeddings is not None:
+    @final
+    class SentenceTransformerEmbeddings(Embeddings):
+        """Wrapper around SentenceTransformer models for use with LangChain."""
 
-    def __init__(
-        self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    ) -> None:
-        """Initialize with model name.
-        
-        The model is loaded lazily on first use to save resources.
-        """
-        self.model_name = model_name
-        self._model: SentenceTransformer | None = None
+        def __init__(
+            self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+        ) -> None:
+            """Initialize with model name."""
+            if SentenceTransformer is None:
+                raise ImportError("sentence-transformers is required for this class")
+            
+            device = "cpu"
+            if torch is not None and torch.cuda.is_available():
+                device = "cuda"
+                
+            self.model: SentenceTransformer = SentenceTransformer(
+                model_name, device=device
+            )
 
-    @property
-    def model(self) -> SentenceTransformer:
-        """Lazily load and return the model."""
-        if self._model is None:
-            logger.info("Loading sentence transformer model: %s", self.model_name)
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            logger.debug("Using device: %s", device)
-            self._model = SentenceTransformer(self.model_name, device=device)
-            logger.info("Model loaded successfully")
-        return self._model
+
 
     @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -131,7 +141,7 @@ class VectorDatabase:
     def vector_store(self) -> Chroma:
         """Lazily initialize and return the vector store."""
         if self._vector_store is None:
-            logger.info("Initializing ChromaDB vector store...")
+
             self._vector_store = Chroma(
                 collection_name=self.collection_name,
                 embedding_function=self.embeddings,
@@ -168,24 +178,7 @@ class VectorDatabase:
             chunk_overlap: Overlap between text chunks.
                 If None, uses environment variable or default.
         """
-        # Use provided values or fall back to environment variables/defaults
-        self.persist_directory = Path(persist_directory or DEFAULT_STORAGE_DIRECTORY)
-        model_name = embeddings_model or DEFAULT_EMBEDDING_MODEL
-        self.embeddings = SentenceTransformerEmbeddings(model_name=model_name)
-        self.collection_name = collection_name or DEFAULT_COLLECTION_NAME
-        self.chunk_size = chunk_size or DEFAULT_CHUNK_SIZE
-        self.chunk_overlap = chunk_overlap or DEFAULT_CHUNK_OVERLAP
-        self._vector_store: Chroma | None = None
-        self._shutdown_registered = False
-        
-        logger.info("VectorDatabase configured with:")
-        logger.info("  Storage directory: %s", self.persist_directory)
-        logger.info("  Embedding model: %s", model_name)
-        logger.info("  Collection name: %s", self.collection_name)
-        logger.info("  Chunk size: %d", self.chunk_size)
-        logger.info("  Chunk overlap: %d", self.chunk_overlap)
-        
-        self._ensure_initialized()
+
 
     def _shutdown(self) -> None:
         """Graceful shutdown to flush or close resources."""

@@ -30,16 +30,7 @@ pool.on('error', (err) => {
   process.exit(-1);
 });
 
-// Schema for query validation
-const querySchema = Joi.object({
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  offset: Joi.number().integer().min(0).default(0),
-  search: Joi.string().max(255).optional(),
-  source_type: Joi.string().max(50).optional(),
-});
 
-// GET /documents endpoint with validation and error handling
-router.get('/documents', async (req, res) => {
   try {
     // Validate query parameters
     const { error, value } = querySchema.validate(req.query);

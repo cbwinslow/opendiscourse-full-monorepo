@@ -23,41 +23,6 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-# Global variables for lazy loading
-_ner_pipeline = None
-_vector_db = None
-
-def get_ner_pipeline():
-    """Lazy-load the NER pipeline to reduce startup time."""
-    global _ner_pipeline
-    if _ner_pipeline is None:
-        logger.info("Loading NER pipeline (dslim/bert-base-NER)...")
-        try:
-            from transformers import pipeline
-            _ner_pipeline = pipeline("ner", model="dslim/bert-base-NER")
-            logger.info("NER pipeline loaded successfully")
-        except ImportError as e:
-            logger.error("Failed to import transformers: %s", str(e))
-            raise ImportError("transformers library is required for entity extraction") from e
-        except Exception as e:
-            logger.error("Failed to load NER pipeline: %s", str(e))
-            raise RuntimeError("Failed to initialize NER pipeline") from e
-    return _ner_pipeline
-
-
-def get_vector_db():
-    """Lazy-load the vector database to reduce startup time."""
-    global _vector_db
-    if _vector_db is None:
-        logger.info("Initializing vector database...")
-        try:
-            from .vector_database import VectorDatabase
-            _vector_db = VectorDatabase()
-            logger.info("Vector database initialized successfully")
-        except Exception as e:
-            logger.error("Failed to initialize vector database: %s", str(e))
-            raise RuntimeError("Failed to initialize vector database") from e
-    return _vector_db
 
 
 # Define entity patterns
@@ -155,7 +120,12 @@ def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
         ner_pipeline = get_ner_pipeline()
         
         # Process with transformers
-        entities = ner_pipeline(text)
+        pipeline = get_ner_pipeline()
+        if pipeline is None:
+            logging.warning("NER pipeline not available, using pattern-based extraction only")
+            entities = []
+        else:
+            entities = pipeline(text)
 
         # Extract relevant information from transformer output
         tokens = [entity["word"] for entity in entities]
