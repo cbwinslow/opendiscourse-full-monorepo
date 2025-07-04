@@ -1,7 +1,7 @@
 {
-  "name": "comprehensive-news-aggregator",
+  "name": "opendiscourse",
   "version": "1.0.0",
-  "description": "Advanced news aggregation and analysis platform",
+  "description": "OpenDiscourse - A platform for analyzing political discourse",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

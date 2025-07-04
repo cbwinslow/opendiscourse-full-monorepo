@@ -28,11 +28,26 @@ logging.basicConfig(
 # Load environment variables
 load_dotenv()
 
-# Initialize transformers pipeline
-ner_pipeline = pipeline("ner", model="dslim/bert-base-NER")
+# Initialize transformers pipeline - lazy loading
+ner_pipeline = None
+
+def get_ner_pipeline():
+    """Get the NER pipeline, initializing it if needed."""
+    global ner_pipeline
+    if ner_pipeline is None:
+        try:
+            ner_pipeline = pipeline("ner", model="dslim/bert-base-NER")
+        except Exception as e:
+            logging.warning(f"Failed to initialize NER pipeline: {e}")
+            ner_pipeline = False  # Mark as failed so we don't retry
+    return ner_pipeline if ner_pipeline is not False else None
 
 # Initialize vector database
-vector_db = VectorDatabase()
+try:
+    vector_db = VectorDatabase()
+except Exception as e:
+    logging.warning(f"Failed to initialize vector database: {e}")
+    vector_db = None
 
 # Define entity patterns
 ENTITY_PATTERNS = {
@@ -97,7 +112,12 @@ def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
     """Extract entities from text using transformers and custom patterns."""
     try:
         # Process with transformers
-        entities = ner_pipeline(text)
+        pipeline = get_ner_pipeline()
+        if pipeline is None:
+            logging.warning("NER pipeline not available, using pattern-based extraction only")
+            entities = []
+        else:
+            entities = pipeline(text)
 
         # Extract relevant information from transformer output
         tokens = [entity["word"] for entity in entities]
