@@ -28,7 +28,10 @@ class Settings:
     @property
     def DATABASE_URI(self) -> str:
         """Get database connection string."""
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+        )
 
     # API
     API_PREFIX: str = "/api"
