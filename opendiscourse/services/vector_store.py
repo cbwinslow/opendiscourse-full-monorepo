@@ -6,12 +6,25 @@ import logging
 from pathlib import Path
 from typing import TypeVar, cast, final
 
-import torch
+try:
+    import torch
+except ImportError:
+    torch = None
+
 from dotenv import load_dotenv
-from langchain_community.vectorstores import Chroma
-from langchain_core.embeddings import Embeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
+
+try:
+    from langchain_community.vectorstores import Chroma
+    from langchain_core.embeddings import Embeddings
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from sentence_transformers import SentenceTransformer
+except ImportError as e:
+    logging.warning(f"LangChain or sentence-transformers not available: {e}")
+    Chroma = None
+    Embeddings = None
+    RecursiveCharacterTextSplitter = None
+    SentenceTransformer = None
+
 from typing_extensions import NotRequired, TypedDict, override  # noqa: F401
 
 # Type aliases
@@ -19,17 +32,41 @@ DocumentScore = tuple[dict[str, str], float]
 DocumentMetadata = dict[str, str]  # Enforce string values for metadata
 
 
-@final
-class SentenceTransformerEmbeddings(Embeddings):
-    """Wrapper around SentenceTransformer models for use with LangChain."""
+if Embeddings is not None:
+    @final
+    class SentenceTransformerEmbeddings(Embeddings):
+        """Wrapper around SentenceTransformer models for use with LangChain."""
 
-    def __init__(
-        self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    ) -> None:
-        """Initialize with model name."""
-        self.model: SentenceTransformer = SentenceTransformer(
-            model_name, device="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        def __init__(
+            self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+        ) -> None:
+            """Initialize with model name."""
+            if SentenceTransformer is None:
+                raise ImportError("sentence-transformers is required for this class")
+            
+            device = "cpu"
+            if torch is not None and torch.cuda.is_available():
+                device = "cuda"
+                
+            self.model: SentenceTransformer = SentenceTransformer(
+                model_name, device=device
+            )
+
+        @override
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            """Embed search docs."""
+            return [self.model.encode(text).tolist() for text in texts]
+
+        @override  
+        def embed_query(self, text: str) -> list[float]:
+            """Embed query text."""
+            return self.model.encode(text).tolist()
+else:
+    class SentenceTransformerEmbeddings:
+        """Placeholder class when dependencies are not available."""
+        
+        def __init__(self, *args, **kwargs):
+            raise ImportError("LangChain dependencies not available for SentenceTransformerEmbeddings")
 
     @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -103,6 +140,8 @@ class VectorDatabase:
     def vector_store(self) -> Chroma:
         """Lazily initialize and return the vector store."""
         if self._vector_store is None:
+            if Chroma is None or self.embeddings is None:
+                raise ImportError("ChromaDB dependencies not available")
             self._vector_store = Chroma(
                 collection_name=self.collection_name,
                 embedding_function=self.embeddings,
@@ -125,10 +164,15 @@ class VectorDatabase:
             persist_directory: Directory to persist the database to.
         """
         self.persist_directory = Path(persist_directory)
-        self.embeddings = SentenceTransformerEmbeddings(model_name=embeddings_model)
         self.collection_name = collection_name
         self._vector_store: Chroma | None = None
-        self._ensure_initialized()
+        
+        try:
+            self.embeddings = SentenceTransformerEmbeddings(model_name=embeddings_model)
+            self._ensure_initialized()
+        except ImportError as e:
+            logging.warning(f"Vector database dependencies not available: {e}")
+            self.embeddings = None
 
     def _ensure_initialized(self) -> None:
         """Ensure the vector store is initialized.
