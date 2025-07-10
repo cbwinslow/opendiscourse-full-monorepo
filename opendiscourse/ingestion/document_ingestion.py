@@ -10,6 +10,8 @@ from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
+
+from vector_store.weaviate_manager import WeaviateManager
 from typing_extensions import TypedDict
 
 try:  # Optional dependencies
@@ -52,6 +54,7 @@ def _get_db_connection():
 
 def _save_document(content: str, metadata: DocumentMetadata) -> Optional[int]:
     """Save document content and metadata to the database."""
+    weaviate_manager = WeaviateManager()
 
     try:
         conn = _get_db_connection()
@@ -90,7 +93,20 @@ def _save_document(content: str, metadata: DocumentMetadata) -> Optional[int]:
             )
             doc_id = cur.fetchone()[0]
             conn.commit()
-            return int(doc_id)
+
+            # --- Placeholder for Entity and Declaration Extraction ---
+            # Future work: Add NLP logic here to extract entities and declarations
+            extracted_entities = []  # Placeholder list
+            extracted_declarations = [] # Placeholder list
+            # --- End Placeholder ---
+
+            # --- Ingest into Weaviate ---
+            # Add extracted entities to Weaviate
+            for entity_data in extracted_entities:
+                 weaviate_manager.add_entity(entity_data)
+            # Add extracted declarations to Weaviate
+            for declaration_data in extracted_declarations:
+                 weaviate_manager.add_declaration(declaration_data)
     except Exception as exc:  # pragma: no cover - db errors
         conn.rollback()
         logging.error("Failed to save document: %s", exc)
@@ -98,6 +114,7 @@ def _save_document(content: str, metadata: DocumentMetadata) -> Optional[int]:
     finally:
         conn.close()
 
+    return int(doc_id)
 
 def ingest_text(text: str, metadata: DocumentMetadata) -> Optional[int]:
     """Ingest a plain text document."""
