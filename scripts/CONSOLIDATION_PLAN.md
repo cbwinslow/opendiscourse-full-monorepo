@@ -54,4 +54,4 @@
 ## Notes
 - All original scripts should be preserved in a `scripts/legacy/` folder after consolidation for reference.
 - Update or create a `SCRIPTS.md` to document the new structure and usage.
-- Refactor code to use modules/functions where possible for clarity.
+- Refactor code to use modules/functions where poss
