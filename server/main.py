@@ -6,6 +6,7 @@ import tempfile
 import textract
 import psycopg2
 from psycopg2.extras import Json
+from .diagnostics import router as diagnostics_router
 
 app = FastAPI(title="OpenDiscourse API", version="0.1.0")
 
@@ -20,6 +21,9 @@ app.add_middleware(
 
 # Database connection config (customize as needed)
 DB_URL = os.environ.get("RAG_DB_URL", "postgresql://user:password@localhost:5432/opendiscourse")
+
+# Include the diagnostics router
+app.include_router(diagnostics_router)
 
 def insert_document_to_db(title, content, doc_type, metadata):
     try:

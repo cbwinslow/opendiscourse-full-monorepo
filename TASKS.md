@@ -80,6 +80,40 @@ This file consolidates all project tasks, microgoals, and agent assignments from
 | Add security review and audit tasks                | Security reviews and audits scheduled and tracked | TODO      | Copilot       |
 | Add accessibility review for web UI                | Web UI reviewed and improved for accessibility | TODO      | Copilot       |
 | Add localization/internationalization support      | System supports multiple languages/locales | TODO      | Copilot       |
+| Implement and test ingestion endpoints for tasks and inferences | Endpoints for tasks and inferences accept, validate, and store data in DB; tested with sample data | TODO | Copilot |
+| Build web UI document upload form | Next.js page allows users to upload documents, calls backend ingestion endpoint, shows status | TODO | Copilot |
+| Build web UI search interface | Next.js page allows users to search/query documents/entities, displays results | TODO | Copilot |
+| Add automated backend and frontend tests | Unit/integration tests for FastAPI and Next.js, run in CI | TODO | Copilot |
+| Add CI workflow for tests and linting | GitHub Actions runs tests and linting on every push/PR | TODO | Copilot |
+| Integrate Ollama/LangChain for LLM-powered search/chat | Backend connects to Ollama/LangChain, exposes endpoints for LLM Q&A | TODO | Copilot |
+| Add user authentication and roles | Users can sign up, log in, and have roles (admin, user, etc.) | TODO | Copilot |
+| Add API rate limiting and abuse prevention | Backend enforces rate limits and blocks abusive requests | TODO | Copilot |
+| Add error monitoring and logging | Centralized error logging and alerting for backend/frontend | TODO | Copilot |
+| Add deployment automation | CI/CD deploys backend and frontend to production on push to main | TODO | Copilot |
+| Add code review and security scanning workflows | GitHub Actions runs ESLint, mypy, CodeQL, Bandit, npm audit, etc. | TODO | Copilot |
+| Add feedback and analytics dashboard | Admin UI shows usage analytics, error rates, and user feedback | TODO | Copilot |
+| Add documentation site generator | Docs site built from markdown files, auto-deployed on update | TODO | Copilot |
+| Add multi-language support to web UI | UI supports multiple languages/locales, user-selectable | TODO | Copilot |
+| Add accessibility testing to CI | Automated accessibility checks for web UI in CI | TODO | Copilot |
+| Add stale issue/PR bot | GitHub Action auto-closes stale issues/PRs after inactivity | TODO | Copilot |
+| Add auto-labeler for PRs/issues | GitHub Action labels PRs/issues based on content or file changes | TODO | Copilot |
+| Add onboarding wizard for new contributors | Interactive onboarding flow in docs or web UI | TODO | Copilot |
+| Add backup and restore automation for DB | Scheduled DB backups and restore scripts, tested regularly | TODO | Copilot |
+| Add data anonymization and privacy tools | Tools/scripts to anonymize sensitive data for research/export | TODO | Copilot |
+| Add export to CSV/JSON for all data | Admin UI and API endpoints allow export of all data | TODO | Copilot |
+| Add integration with external data sources | Scheduled ingestion from external APIs (e.g., news, social, legal) | TODO | Copilot |
+| Add fine-grained permissions for data access | Role-based access control for all data and endpoints | TODO | Copilot |
+| Add end-to-end tests for critical user flows | Automated E2E tests for upload, search, chat, admin | TODO | Copilot |
+| Add performance/load testing for backend | Automated load tests for ingestion, search, and chat endpoints | TODO | Copilot |
+| Add changelog automation | Changelog generated from PRs/commits, auto-published on release | TODO | Copilot |
+| Add release notes generator | Release notes auto-generated and published on GitHub/Linear | TODO | Copilot |
+| Add integration with Slack/Discord for notifications | Build/deploy/alert notifications sent to team chat | TODO | Copilot |
+| Add project health dashboard | Dashboard shows build status, test coverage, open issues, etc. | TODO | Copilot |
+| Add project metrics to README | Badges for build, coverage, dependencies, etc. in README | TODO | Copilot |
+| Implement Linux system diagnostics collector module | Python module collects CPU, memory, disk, SMART, and network info on Linux, returns structured report, handles errors | IN PROGRESS | Copilot |
+| Add and test FastAPI endpoints for diagnostics collection | FastAPI endpoints accept diagnostics requests, run collector, return results, with tests | TODO | Copilot |
+| Integrate diagnostics collector with RAG ingestion pipeline | Diagnostics data can be ingested and queried in RAG DB, with schema and scripts updated | TODO | Copilot |
+| Add web UI for diagnostics upload and results display | Next.js UI allows upload/trigger of diagnostics, displays results, connects to backend | TODO | Copilot |
 
 ---
 
@@ -163,16 +197,149 @@ This file consolidates all project tasks, microgoals, and agent assignments from
 | Add security review and audit tasks | Not started. | 0% |
 | Add accessibility review for web UI | Not started. | 0% |
 | Add localization/internationalization support | Not started. | 0% |
+| Implement and test ingestion endpoints for tasks and inferences | Endpoints for tasks and inferences accept, validate, and store data in DB; tested with sample data | TODO | Copilot |
+| Build web UI document upload form | Next.js page allows users to upload documents, calls backend ingestion endpoint, shows status | TODO | Copilot |
+| Build web UI search interface | Next.js page allows users to search/query documents/entities, displays results | TODO | Copilot |
+| Add automated backend and frontend tests | Unit/integration tests for FastAPI and Next.js, run in CI | TODO | Copilot |
+| Add CI workflow for tests and linting | GitHub Actions runs tests and linting on every push/PR | TODO | Copilot |
+| Integrate Ollama/LangChain for LLM-powered search/chat | Backend connects to Ollama/LangChain, exposes endpoints for LLM Q&A | TODO | Copilot |
+| Add user authentication and roles | Users can sign up, log in, and have roles (admin, user, etc.) | TODO | Copilot |
+| Add API rate limiting and abuse prevention | Backend enforces rate limits and blocks abusive requests | TODO | Copilot |
+| Add error monitoring and logging | Centralized error logging and alerting for backend/frontend | TODO | Copilot |
+| Add deployment automation | CI/CD deploys backend and frontend to production on push to main | TODO | Copilot |
+| Add code review and security scanning workflows | GitHub Actions runs ESLint, mypy, CodeQL, Bandit, npm audit, etc. | TODO | Copilot |
+| Add feedback and analytics dashboard | Admin UI shows usage analytics, error rates, and user feedback | TODO | Copilot |
+| Add documentation site generator | Docs site built from markdown files, auto-deployed on update | TODO | Copilot |
+| Add multi-language support to web UI | UI supports multiple languages/locales, user-selectable | TODO | Copilot |
+| Add accessibility testing to CI | Automated accessibility checks for web UI in CI | TODO | Copilot |
+| Add stale issue/PR bot | GitHub Action auto-closes stale issues/PRs after inactivity | TODO | Copilot |
+| Add auto-labeler for PRs/issues | GitHub Action labels PRs/issues based on content or file changes | TODO | Copilot |
+| Add onboarding wizard for new contributors | Interactive onboarding flow in docs or web UI | TODO | Copilot |
+| Add backup and restore automation for DB | Scheduled DB backups and restore scripts, tested regularly | TODO | Copilot |
+| Add data anonymization and privacy tools | Tools/scripts to anonymize sensitive data for research/export | TODO | Copilot |
+| Add export to CSV/JSON for all data | Admin UI and API endpoints allow export of all data | TODO | Copilot |
+| Add integration with external data sources | Scheduled ingestion from external APIs (e.g., news, social, legal) | TODO | Copilot |
+| Add fine-grained permissions for data access | Role-based access control for all data and endpoints | TODO | Copilot |
+| Add end-to-end tests for critical user flows | Automated E2E tests for upload, search, chat, admin | TODO | Copilot |
+| Add performance/load testing for backend | Automated load tests for ingestion, search, and chat endpoints | TODO | Copilot |
+| Add changelog automation | Changelog generated from PRs/commits, auto-published on release | TODO | Copilot |
+| Add release notes generator | Release notes auto-generated and published on GitHub/Linear | TODO | Copilot |
+| Add integration with Slack/Discord for notifications | Build/deploy/alert notifications sent to team chat | TODO | Copilot |
+| Add project health dashboard | Dashboard shows build status, test coverage, open issues, etc. | TODO | Copilot |
+| Add project metrics to README | Badges for build, coverage, dependencies, etc. in README | TODO | Copilot |
 
-#### Section Completion
-- Core Infrastructure: 80%
-- RAG DB & Ingestion: 60%
-- Automation & CI/CD: 70%
-- Documentation & Rules: 90%
-- Web UI & Admin: 0%
-- Analytics, Security, Accessibility: 0%
+---
 
-#### Total Project Completion: 48%
+## Progress Tracking (as of 2025-07-12)
+
+### Task Progress Table
+
+| Task/Microgoal | Progress Notes | % Complete |
+|----------------|---------------|------------|
+| Integrate Ollama for local LLM agent | Not started. | 0% |
+| Add Agent-Zero for code review/planning | Not started. | 0% |
+| Set up OpenAI Codex for code generation | Not started. | 0% |
+| Create DEVELOPMENT.md and AGENT.md docs | Docs created and committed. | 100% |
+| Create SRS with microgoals and measurable criteria | Not started. | 0% |
+| Automate db migration/health scripts | Scripts created, tested, and documented. | 100% |
+| Document all new scripts in PROJECT_STRUCTURE.md | PROJECT_STRUCTURE.md updated. | 100% |
+| Implement Codex delegation workflow | Script created, tested, and documented. | 100% |
+| Implement Ollama delegation workflow | Not started. | 0% |
+| Implement Ollama agent API for workload submission | API endpoint created and tested. | 100% |
+| Implement Ollama agent background worker | Worker implemented and tested. | 100% |
+| Implement Ollama agent webhook/callback | Webhook implemented and tested. | 100% |
+| Implement Ollama agent result/status API | API endpoint created and tested. | 100% |
+| Document MCP server API endpoints | API reference written and committed. | 100% |
+| Integrate MCP server endpoints with UI | Not started. | 0% |
+| GovInfo: Data Download | Not started. | 0% |
+| GovInfo: Database Design | Not started. | 0% |
+| GovInfo: ERD Creation | Not started. | 0% |
+| GovInfo: Documentation | Not started. | 0% |
+| Committee: Database Design | Not started. | 0% |
+| Committee: ERD Creation | Not started. | 0% |
+| Committee: Documentation | Not started. | 0% |
+| Member: Data Extraction | Not started. | 0% |
+| Member: Data Processing | Not started. | 0% |
+| Member: Data Validation | Not started. | 0% |
+| Member: Database Design | Not started. | 0% |
+| Member: ERD Creation | Not started. | 0% |
+| Member: Documentation | Not started. | 0% |
+| RAG Database & Vector Store Design | Schema designed, SQL written, schema file created, progress tracked. | 90% |
+| RAG DB migration/automation script | Script created, tested, and documented. | 100% |
+| Ingest media appearances (podcasts, YouTube, news) | Not started. | 0% |
+| Expand entity tracking (contacts, social handles, transcripts) | Not started. | 0% |
+| Automate scheduled ingestion (background jobs/cron) | Not started. | 0% |
+| Scaffold web UI for RAG DB (React/Next.js) | Create minimal React/Next.js app, add pages for search, chat, admin, and analytics. | 0% |
+| Build research and chat interfaces (LLM-powered Q&A, attribution) | Not started. | 0% |
+| Build admin dashboard for sources/entities/jobs | Not started. | 0% |
+| Integrate LangChain retrieval/QA chains | Not started. | 0% |
+| Connect web UI to retrieval/QA chains | Not started. | 0% |
+| Expand CI/CD for new scripts and web UI | Not started. | 0% |
+| Expand Jira/GitHub/GitLab automation for tasks | Workflow and script created, Jira integration tested, progress tracked. | 80% |
+| Continue updating documentation and global rules | Ongoing updates, new rules added, progress tracked. | 80% |
+| Consolidate all scripts into functional directories | All scripts moved, committed, and pushed. | 100% |
+| Document script structure in SCRIPTS.md | SCRIPTS.md created and updated. | 100% |
+| Consolidate recommendations into RECOMMENDATIONS.md | All recommendations merged. | 100% |
+| Consolidate project tasks into TASKS.md | All tasks merged. | 100% |
+| Create and enforce GLOBAL_RULES.md | Rules created, updated, and enforced. | 100% |
+| Set up Jira integration and automation | Workflow and script created, Jira integration tested. | 100% |
+| Document Jira setup in dotfiles/JIRA_SETUP.md | JIRA_SETUP.md created and updated. | 100% |
+| Design RAG DB schema in rag_db_schema.sql | Schema designed and documented. | 100% |
+| Add ingestion scripts for documents and social media | Scripts created and tested. | 100% |
+| Update TASKS.md and GLOBAL_RULES.md on every change | Ongoing, rules and tasks updated after every change. | 80% |
+| Add ingestion scripts for new sources (future) | Not started. | 0% |
+| Add background jobs for scheduled ingestion/research | Not started. | 0% |
+| Integrate LangChain for inference and attribution | Not started. | 0% |
+| Expand entity tracking (contacts, social, media) | Not started. | 0% |
+| Expand admin and reporting interfaces | Not started. | 0% |
+| Add project management automation (Jira, GitHub, GitLab CI/CD) | Ongoing, automation expanded. | 80% |
+| Maintain up-to-date project documentation | Ongoing, docs updated. | 80% |
+| Enforce global rules for agent and contributor behavior | Ongoing, rules enforced. | 80% |
+| Add onboarding and developer setup docs | Not started. | 0% |
+| Add test coverage for all new scripts and features | Not started. | 0% |
+| Add monitoring and alerting for ingestion/research jobs | Not started. | 0% |
+| Add data validation and quality checks to ingestion | Not started. | 0% |
+| Add ERD diagrams for all major schemas | Not started. | 0% |
+| Add user feedback and issue reporting to web UI | Not started. | 0% |
+| Add API documentation and OpenAPI specs | Not started. | 0% |
+| Add support for ClickHouse as alternative vector store | Not started. | 0% |
+| Add support for multi-agent collaboration | Not started. | 0% |
+| Add versioning and migration for RAG schema | Not started. | 0% |
+| Add data export and backup scripts | Not started. | 0% |
+| Add analytics and usage reporting | Not started. | 0% |
+| Add security review and audit tasks | Not started. | 0% |
+| Add accessibility review for web UI | Not started. | 0% |
+| Add localization/internationalization support | Not started. | 0% |
+| Implement and test ingestion endpoints for tasks and inferences | Endpoints for tasks and inferences accept, validate, and store data in DB; tested with sample data | TODO | Copilot |
+| Build web UI document upload form | Next.js page allows users to upload documents, calls backend ingestion endpoint, shows status | TODO | Copilot |
+| Build web UI search interface | Next.js page allows users to search/query documents/entities, displays results | TODO | Copilot |
+| Add automated backend and frontend tests | Unit/integration tests for FastAPI and Next.js, run in CI | TODO | Copilot |
+| Add CI workflow for tests and linting | GitHub Actions runs tests and linting on every push/PR | TODO | Copilot |
+| Integrate Ollama/LangChain for LLM-powered search/chat | Backend connects to Ollama/LangChain, exposes endpoints for LLM Q&A | TODO | Copilot |
+| Add user authentication and roles | Users can sign up, log in, and have roles (admin, user, etc.) | TODO | Copilot |
+| Add API rate limiting and abuse prevention | Backend enforces rate limits and blocks abusive requests | TODO | Copilot |
+| Add error monitoring and logging | Centralized error logging and alerting for backend/frontend | TODO | Copilot |
+| Add deployment automation | CI/CD deploys backend and frontend to production on push to main | TODO | Copilot |
+| Add code review and security scanning workflows | GitHub Actions runs ESLint, mypy, CodeQL, Bandit, npm audit, etc. | TODO | Copilot |
+| Add feedback and analytics dashboard | Admin UI shows usage analytics, error rates, and user feedback | TODO | Copilot |
+| Add documentation site generator | Docs site built from markdown files, auto-deployed on update | TODO | Copilot |
+| Add multi-language support to web UI | UI supports multiple languages/locales, user-selectable | TODO | Copilot |
+| Add accessibility testing to CI | Automated accessibility checks for web UI in CI | TODO | Copilot |
+| Add stale issue/PR bot | GitHub Action auto-closes stale issues/PRs after inactivity | TODO | Copilot |
+| Add auto-labeler for PRs/issues | GitHub Action labels PRs/issues based on content or file changes | TODO | Copilot |
+| Add onboarding wizard for new contributors | Interactive onboarding flow in docs or web UI | TODO | Copilot |
+| Add backup and restore automation for DB | Scheduled DB backups and restore scripts, tested regularly | TODO | Copilot |
+| Add data anonymization and privacy tools | Tools/scripts to anonymize sensitive data for research/export | TODO | Copilot |
+| Add export to CSV/JSON for all data | Admin UI and API endpoints allow export of all data | TODO | Copilot |
+| Add integration with external data sources | Scheduled ingestion from external APIs (e.g., news, social, legal) | TODO | Copilot |
+| Add fine-grained permissions for data access | Role-based access control for all data and endpoints | TODO | Copilot |
+| Add end-to-end tests for critical user flows | Automated E2E tests for upload, search, chat, admin | TODO | Copilot |
+| Add performance/load testing for backend | Automated load tests for ingestion, search, and chat endpoints | TODO | Copilot |
+| Add changelog automation | Changelog generated from PRs/commits, auto-published on release | TODO | Copilot |
+| Add release notes generator | Release notes auto-generated and published on GitHub/Linear | TODO | Copilot |
+| Add integration with Slack/Discord for notifications | Build/deploy/alert notifications sent to team chat | TODO | Copilot |
+| Add project health dashboard | Dashboard shows build status, test coverage, open issues, etc. | TODO | Copilot |
+| Add project metrics to README | Badges for build, coverage, dependencies, etc. in README | TODO | Copilot |
 
 ---
 
