@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 const mockEntities = [
   { id: 1, name: "Jane Doe", type: "Politician" },

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+const { fireEvent, render, screen } = require('@testing-library/react');
 import Search from '../search';
 
 describe('Search Page', () => {

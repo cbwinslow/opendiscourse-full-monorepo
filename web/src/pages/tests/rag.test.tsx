@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+const { render, screen } = require('@testing-library/react');
 import RAGReports from '../rag';
 
 describe('RAG Reports Page', () => {

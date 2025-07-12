@@ -1,6 +1,38 @@
-# Code Improvement Recommendations
+# Code Improvement Recommendations (Consolidated)
 
-This document summarizes potential improvements for each code file in the repository. Suggestions focus on readability, reliability, and maintainability.
+This document consolidates all recommendations from previous project history and dated files.
+
+## General Recommendations
+
+- Implement unit tests for new ingestion functions using temporary files and mocks
+- Add pdfminer.six and markdown parsing libraries to requirements for full functionality
+- Replace unavailable `bloomberg-api` dependency with a maintained alternative or mock implementation to allow `npm install` to succeed.
+- Implement real LangChain integration inside `src/api/rag.js` for document retrieval and embedding.
+- Add database migrations and Sequelize models to replace raw SQL queries.
+- Expand front-end pages with authentication and better UX.
+- Consolidate API configuration into a single module with typed classes.
+- Add tests that mock HTTP responses for ingestion scripts.
+- Consider isolating test dependencies in a virtual environment to avoid pyenv conflicts with system python.
+- Consider implementing a backend endpoint to ingest selected documents into the vector database.
+- Add authentication UI for saving EXA API key in localStorage.
+- Consider verifying if the `MediaInsightTracker` directory exists in another location or branch. If present, merge its contents into the repository root for easier maintenance.
+- Implement real translation support using a dedicated model and store results in `pdf_document_translations`.
+- Add automated tests for `scripts/semantic_vector_workflow.py` to verify vector store writes.
+- Consider orchestrating the ingestion workflow via a task queue for large batches of PDFs.
+- Ensure tasks T-01 through T-12 are prioritized and scheduled for implementation.
+- Consider setting up CI to automatically enforce creation of DIFF and RECOMMENDATIONS files on each commit.
+- Consider adding continuous integration tests to catch outdated scripts earlier.
+- Provide a `scripts/` directory for maintainable operational tasks.
+- Remove remaining deployment scripts or consolidate them into a single automation tool if still required.
+- Keep example code in `examples/` and maintain minimal docs in the root `README.md`.
+- Maintain documentation files in version control even during large cleanups to avoid accidental loss.
+- Consider grouping operational scripts under a dedicated `scripts/` directory for clarity.
+- Consolidate documentation for all shell scripts in a single `scripts/README.md`.
+- Consider replacing custom session auth with Passport.js strategies for OAuth providers.
+- Add automated tests for the new tracking API to ensure logs are stored as expected.
+- Expand the workspace interface to load historical answers from the server rather than local storage.
+- Remove duplicate `get_db` function in `opendiscourse/db/database.py` to avoid confusion.
+- Add unit tests for the vector store to validate `add_document` and `search` functionality.
 
 ## Python Files
 
