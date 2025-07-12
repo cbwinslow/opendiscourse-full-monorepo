@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+const { fireEvent, render, screen } = require('@testing-library/react');
 import Entities from '../entities';
 
 describe('Entities Page', () => {

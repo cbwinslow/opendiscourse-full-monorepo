@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import Ingestion from '../ingestion';
+const { render, screen } = require('@testing-library/react');
+const Ingestion = require('../ingestion').default;
 
 describe('Ingestion Page', () => {
   it('renders ingestion status and trigger button', () => {
