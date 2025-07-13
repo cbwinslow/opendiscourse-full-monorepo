@@ -9,11 +9,13 @@ Welcome to the comprehensive documentation for OpenDiscourse v1.0.1. This docume
 | Document | Description | Audience |
 |----------|-------------|----------|
 | [Project Overview](../README.md) | High-level project introduction and features | Everyone |
+| [Onboarding Guide](ONBOARDING.md) | Steps for new contributors | Everyone |
 | [Development Setup](guides/DEVELOPMENT_SETUP.md) | Complete development environment setup | Developers |
 | [API Reference](api/API_REFERENCE.md) | Comprehensive API documentation | Developers, Integrators |
 | [Deployment Instructions](guides/DEPLOYMENT_INSTRUCTIONS.md) | Deployment across all environments | DevOps, SysAdmins |
 | [Project Plan](../PROJECT_PLAN.md) | Development roadmap and milestones | Product Managers, Stakeholders |
 | [Software Requirements](../SRS.md) | Technical specifications and requirements | Architects, Developers |
+| [ERD Diagrams](erd/main_schema.puml) | Database entity relationship diagrams | Architects, Developers |
 | [Changelog](../CHANGELOG.md) | Version history and release notes | Everyone |
 
 ---

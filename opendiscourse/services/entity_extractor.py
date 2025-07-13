@@ -615,23 +615,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-            WHERE status = 'completed'
-            AND NOT EXISTS (SELECT 1 FROM entity_mentions WHERE document_id = documents.id)
-            LIMIT 100
-        """
-        )
-
-        documents = cursor.fetchall()
-
-        for doc_id, content in documents:
-            process_document(doc_id, content)
-
-    except Exception as e:
-        logging.error(f"Error in main processing: {e!s}")
-    finally:
-        cursor.close()
-        conn.close()
-
-
-if __name__ == "__main__":
-    main()

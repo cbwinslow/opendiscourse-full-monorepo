@@ -249,3 +249,8 @@ describe('Ollama Delegation', () => {
   });
 });
 ```
+
+### Monitoring Scripts
+
+#### `scripts/monitoring/job_monitor.py`
+Monitors ingestion log files for errors and prints alerts. This can be extended to send notifications to external services.
