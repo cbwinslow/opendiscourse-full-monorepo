@@ -1,0 +1,1 @@
+# Recommendations (2025-07-13 10:02 UTC)\n- Replace 'dotenv' with 'python-dotenv' in dev requirements to fix pip installation.\n- Clean up duplicate code in entity_extractor.py to avoid test failures.\n- Consider adding missing dependencies (FastAPI, SQLAlchemy) to requirements for tests.

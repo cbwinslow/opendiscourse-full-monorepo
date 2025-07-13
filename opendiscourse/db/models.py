@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Any, TypeVar, final
+from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String, text
 from sqlalchemy import Enum as SQLEnum

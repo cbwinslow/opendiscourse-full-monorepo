@@ -1,0 +1,3 @@
+- Consider integrating the new job_monitor script with a real alerting service like Slack or email.
+- Expand validation helpers to support schema definitions using pydantic models.
+- Automate ERD diagram generation from the database schema to avoid inconsistencies.
