@@ -1,9 +1,19 @@
-"""Configuration for the GovInfo API."""
+"""API configuration settings for all services"""
 
 import os
 
-API_KEY = os.getenv("GOVINFO_API_KEY", "YOUR_API_KEY_HERE")
-BASE_URL = "https://api.govinfo.gov"
-HEADERS = {"X-Api-Key": API_KEY, "Accept": "application/json"}
-COLLECTIONS_URL = f"{BASE_URL}/collections"
-PACKAGE_URL = f"{BASE_URL}/packages"
+# GovInfo API Configuration
+GOVINFO_API_KEY = os.getenv("GOVINFO_API_KEY", "YOUR_API_KEY_HERE")
+GOVINFO_BASE_URL = "https://api.govinfo.gov"
+GOVINFO_HEADERS = {"X-Api-Key": GOVINFO_API_KEY, "Accept": "application/json"}
+
+# Ollama Configuration
+OLLAMA_CONFIG = {
+    "base_url": "http://localhost:11434",
+    "default_model": "llama2",
+    "timeout": 300,
+    "max_retries": 3
+}
+
+# MCP Server Configuration
+MCP_SERVER = "http://localhost:8080"

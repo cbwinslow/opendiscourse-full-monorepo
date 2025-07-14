@@ -1,30 +1,31 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from datetime import datetime
+from typing import Optional
+
+# Import the new endpoints
+from api.routes.task_inference_endpoints import router as task_inference_router
+from api.routes.llm_endpoints import router as llm_router
+from api.routes.auth_endpoints import router as auth_router
+from ..config.settings import Settings
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import Optional
-from datetime import datetime
-
-from models.request_models import (
-    SearchRequest,
-    DocumentRequest,
-    ConfigurationRequest,
-)
-from models.response_models import (
-    SearchResponse,
-    DocumentResponse,
-    HealthCheckResponse,
-    MetricsResponse
-)
-from services.vector_store import VectorStoreService
-from services.monitoring import MonitoringService
+from api.models.models import ConfigurationRequest, DocumentRequest, SearchRequest
+from models.response_models import (DocumentResponse, HealthCheckResponse,
+                                    MetricsResponse, SearchResponse)
 from services.health_check import HealthCheckService
-from config.settings import Settings
+from services.monitoring import MonitoringService
+from services.vector_store import VectorStoreService
 
 app = FastAPI(
     title="Vector Store API",
     description="API for vector store operations with monitoring and health checks",
     version="1.0.0"
 )
+
+# Register routers
+app.include_router(task_inference_router)
+app.include_router(llm_router)
+app.include_router(auth_router)
 
 # Configure CORS
 app.add_middleware(

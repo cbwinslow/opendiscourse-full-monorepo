@@ -5,28 +5,45 @@ This document details the Retrieval-Augmented Generation (RAG) integration withi
 
 ## Vector Store Configuration
 
-### Setup
-- Using Elasticsearch as the vector store
-- Embedding model: Sentence Transformers (all-MiniLM-L6-v2)
-- Vector dimension: 384
-- Index settings optimized for semantic search
+### pgvector Setup
+```sql
+-- Enable extension
+CREATE EXTENSION vector;
+
+-- Create hybrid indexes
+CREATE INDEX doc_search_idx ON documents
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+CREATE INDEX doc_chunk_search_idx ON documents
+USING ivfflat (chunk_embedding vector_cosine_ops)
+WITH (lists = 100);
+```
+
+**Index Optimization Tips:**
+- Adjust `lists` parameter based on dataset size
+- Rebuild indexes after bulk inserts
+- Use concurrent index creation for production environments
 
 ### Configuration Management
 ```yaml
 # Vector Store Settings in k8s/configmap.yaml
 vector_store:
-  engine: elasticsearch
-  host: elasticsearch-master
-  port: 9200
-  index_prefix: opendiscourse
-  embedding_model: all-MiniLM-L6-v2
-  vector_dim: 384
-  similarity_metric: cosine
+  engine: postgresql
+  host: postgres-primary
+  port: 5432
+  database: opendiscourse
+  user: rag_user
+  password: ${VECTOR_DB_PASSWORD}
+  embedding_dim: 1536
+  index_type: ivfflat
+  lists: 100
 ```
 
 ### Maintenance Scripts
-- `vectorStoreManager.ts`: Manages index creation, updates, and maintenance
-- `ragMonitor.ts`: Monitors performance and result quality
+- `migration_runner.py`: Handles schema migrations and extensions
+- `index_optimizer.py`: Manages index rebuilds and tuning
+- `vector_healthcheck.py`: Monitors vector store performance
 
 ## Integration Points
 

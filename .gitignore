@@ -221,3 +221,5 @@ temp/
 *-temp/
 dimensional-debris/
 opendiscourse-*/
+
+.cpqdevkit/**

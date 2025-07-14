@@ -76,10 +76,10 @@ class Entity:
 @contextmanager
 def get_db_connection() -> Generator[psycopg2.extensions.connection, None, None]:
     """Context manager for database connections.
-    
+
     Yields:
         A PostgreSQL database connection
-        
+
     Raises:
         psycopg2.OperationalError: If connection fails
     """
@@ -94,7 +94,7 @@ def get_db_connection() -> Generator[psycopg2.extensions.connection, None, None]
             port=os.getenv("DB_PORT", "5432"),
         )
         yield connection
-        
+
     except psycopg2.Error as e:
         logger.error("Database connection error: %s", str(e))
         if connection:
@@ -118,7 +118,7 @@ def extract_entities(text: str, document_id: int) -> list[dict[str, Any]]:
     try:
         # Get the lazy-loaded NER pipeline
         ner_pipeline = get_ner_pipeline()
-        
+
         # Process with transformers
         pipeline = get_ner_pipeline()
         if pipeline is None:
@@ -349,16 +349,16 @@ def extract_declarations(
 
 class DatabaseHelper:
     """Helper class for database operations with error handling and commits."""
-    
+
     @staticmethod
     def execute_query_with_result(query: str, params: tuple, operation_name: str) -> Optional[Any]:
         """Execute a query that returns a result with proper error handling.
-        
+
         Args:
             query: SQL query to execute
             params: Parameters for the query
             operation_name: Name of the operation for logging
-            
+
         Returns:
             Query result or None if failed
         """
@@ -373,16 +373,16 @@ class DatabaseHelper:
         except Exception as e:
             logger.error("Error in %s: %s", operation_name, str(e), exc_info=True)
             return None
-    
+
     @staticmethod
     def execute_query_no_result(query: str, params: tuple, operation_name: str) -> bool:
         """Execute a query that doesn't return a result with proper error handling.
-        
+
         Args:
             query: SQL query to execute
             params: Parameters for the query
             operation_name: Name of the operation for logging
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -415,7 +415,7 @@ def save_entity(entity: dict[str, Any]) -> Optional[int]:
     """
     if not entity.get("text") or not entity.get("type"):
         raise ValueError("Entity must have 'text' and 'type' fields")
-    
+
     query = """
         INSERT INTO entities (text, type, metadata, created_at, updated_at)
         VALUES (%s, %s, %s, NOW(), NOW())
@@ -423,23 +423,23 @@ def save_entity(entity: dict[str, Any]) -> Optional[int]:
         SET updated_at = NOW()
         RETURNING id
     """
-    
+
     params = (
         entity["text"],
         entity["type"],
         json.dumps({"confidence": entity.get("confidence", 0.0)}),
     )
-    
+
     result = DatabaseHelper.execute_query_with_result(query, params, "save entity")
     return result[0] if result else None
 
 
 def save_entity_relationship(relationship: dict[str, Any]) -> bool:
     """Save entity relationship to database.
-    
+
     Args:
         relationship: Dictionary containing relationship information
-        
+
     Returns:
         True if successful, False otherwise
     """
@@ -447,7 +447,7 @@ def save_entity_relationship(relationship: dict[str, Any]) -> bool:
         INSERT INTO entity_relationships (entity_id, related_entity_id, relationship_type, confidence, created_at)
         VALUES (%s, %s, %s, %s, %s)
     """
-    
+
     params = (
         relationship["entity_id"],
         relationship["related_entity_id"],
@@ -455,7 +455,7 @@ def save_entity_relationship(relationship: dict[str, Any]) -> bool:
         relationship.get("confidence", 0.5),
         datetime.now(),
     )
-    
+
     return DatabaseHelper.execute_query_no_result(query, params, "save entity relationship")
 
 
@@ -463,20 +463,20 @@ def save_entity_mention(
     mention: dict[str, Any], document_id: int, entity_id: int
 ) -> bool:
     """Save entity mention to database.
-    
+
     Args:
         mention: Dictionary containing mention information
         document_id: ID of the document containing the mention
         entity_id: ID of the entity being mentioned
-        
+
     Returns:
         True if successful, False otherwise
     """
     query = """
-        INSERT INTO entity_mentions (text, type, confidence, document_id, entity_id, created_at) 
+        INSERT INTO entity_mentions (text, type, confidence, document_id, entity_id, created_at)
         VALUES (%s, %s, %s, %s, %s, %s)
     """
-    
+
     params = (
         mention["text"],
         mention["type"],
@@ -485,23 +485,23 @@ def save_entity_mention(
         entity_id,
         datetime.now(),
     )
-    
+
     return DatabaseHelper.execute_query_no_result(query, params, "save entity mention")
 def save_declaration(declaration: dict[str, Any], document_id: int) -> bool:
     """Save declaration to database.
-    
+
     Args:
         declaration: Dictionary containing declaration information
         document_id: ID of the document containing the declaration
-        
+
     Returns:
         True if successful, False otherwise
     """
     query = """
-        INSERT INTO declarations (document_id, entity_id, declaration_text, declaration_type, confidence, created_at) 
+        INSERT INTO declarations (document_id, entity_id, declaration_text, declaration_type, confidence, created_at)
         VALUES (%s, %s, %s, %s, %s, %s)
     """
-    
+
     params = (
         document_id,
         declaration["entity_id"],
@@ -510,13 +510,13 @@ def save_declaration(declaration: dict[str, Any], document_id: int) -> bool:
         declaration["confidence"],
         datetime.now(),
     )
-    
+
     return DatabaseHelper.execute_query_no_result(query, params, "save declaration")
 
 
 def process_document(document_id: int, content: str, metadata: dict[str, str]) -> None:
     """Process a document for entity extraction.
-    
+
     Args:
         document_id: ID of the document to process
         content: Text content of the document
@@ -524,7 +524,7 @@ def process_document(document_id: int, content: str, metadata: dict[str, str]) -
     """
     try:
         logger.info("Starting entity extraction for document %d", document_id)
-        
+
         # Extract entities with continuous discovery
         entities = extract_entities(content, document_id)
         logger.debug("Extracted %d entities from document %d", len(entities), document_id)
@@ -588,15 +588,15 @@ def main():
                     """
                     SELECT id, content, title
                     FROM documents
-                    WHERE content IS NOT NULL 
+                    WHERE content IS NOT NULL
                     AND LENGTH(content) > 0
                     ORDER BY id
                     """
                 )
                 documents = cursor.fetchall()
-                
+
                 logger.info("Found %d documents to process", len(documents))
-                
+
                 for doc_id, content, title in documents:
                     try:
                         logger.info("Processing document %d: %s", doc_id, title or "Untitled")
@@ -605,13 +605,16 @@ def main():
                     except Exception as e:
                         logger.error("Failed to process document %d: %s", doc_id, str(e))
                         continue
-                        
+
         logger.info("Entity extraction completed")
-        
+
     except Exception as e:
         logger.error("Error in main entity extraction process: %s", str(e), exc_info=True)
         raise
+<<<<<<< Updated upstream
 
 
 if __name__ == "__main__":
     main()
+=======
+>>>>>>> Stashed changes

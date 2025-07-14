@@ -11,6 +11,17 @@ function HomePage() {
 
   const features = [
     {
+      title: 'Document Search',
+      description: 'Search across government documents with AI-powered semantic search',
+      href: '/web/search.html',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      ),
+      color: 'bg-blue-500',
+    },
+    {
       title: 'RAG Interface',
       description: 'Query government documents using AI-powered retrieval and generation',
       href: '/web/rag_interface.html',
@@ -19,7 +30,7 @@ function HomePage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       ),
-      color: 'bg-blue-500',
+      color: 'bg-green-500',
     },
     {
       title: 'Document Viewer',
@@ -174,12 +185,12 @@ function HomePage() {
         {/* Quick Actions */}
         <Card title="Quick Actions" subtitle="Common tasks and shortcuts">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="btn-primary">
+            <a href="/web/document_upload.html" className="btn-primary inline-flex items-center">
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               Upload Documents
-            </button>
+            </a>
             <button className="btn-outline">
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
