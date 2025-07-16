@@ -157,32 +157,63 @@ This file consolidates all project tasks, microgoals, and agent assignments from
 | Integrate diagnostics collector with RAG ingestion pipeline | Diagnostics data can be ingested and queried in RAG DB, with schema and scripts updated | TODO | Copilot |
 | Add web UI for diagnostics upload and results display | Next.js UI allows upload/trigger of diagnostics, displays results, connects to backend | TODO | Copilot |
 
----
 
+## Hetzner Deployment & Secrets Automation
+
+### 1. Prepare SSH Access
+  - Microgoal: Run `ssh-keygen -t ed25519 -C "hetzner-deploy"` and save key.
+  - Microgoal: Use `ssh-copy-id` or manually append to `~/.ssh/authorized_keys`.
+
+### 2. Automate Secrets Extraction from Bitwarden
+  - Microgoal: Run `bw login` and store session.
+  - Microgoal: Use `bw list items` and parse all fields for secrets.
+  - Microgoal: Rename secrets to match shell variable conventions.
+
+### 3. Integrate Secrets into Shell
+  - Microgoal: Write secrets as shell functions in `~/.shell_functions`.
+  - Microgoal: Write secrets as aliases in `~/.shell_aliases`.
+  - Microgoal: Add `source ~/.shell_functions` and `source ~/.shell_aliases` to `.bashrc` or `.zshrc`.
+
+### 4. Automate Deployment to Hetzner
+  - Microgoal: Use `rsync` or `scp` to push code to Hetzner.
+  - Microgoal: Copy function/alias files and source them in remote shell config.
+
+### 5. Document Process
+
+## Bitwarden Secrets Management & Automation
+
+### 1. Bitwarden Organization Setup
+- [ ] **Create Bitwarden organization/collection for opendiscourse**
+  - Microgoal: Set up a dedicated Bitwarden org or collection for project secrets.
+- [ ] **Add all project secrets with OPD_ prefix**
+  - Microgoal: Store all usernames, passwords, and tokens as OPD-prefixed items in Bitwarden.
+
+### 2. Migrate Configs to Use OPD-prefixed Variables
+- [ ] **Update .env and Ansible vault to use OPD_ variables**
+  - Microgoal: Replace all default names with OPD-prefixed variables and Bitwarden pointers.
+- [ ] **Update scripts to extract secrets from Bitwarden**
+  - Microgoal: Use `bw_secrets_to_env.sh` and `bw_secrets_to_vault.sh` for automation.
+
+### 3. Automation & Workflow
+- [ ] **Document Bitwarden workflow in PROJECT_SETTINGS.md**
+  - Microgoal: Add instructions for secret management and automation.
+- [ ] **Integrate Bitwarden sync into deployment pipeline**
+  - Microgoal: Ensure secrets are always up-to-date before deploy.
 ## Progress Tracking (as of 2025-07-12)
-
 ### Task Progress Table
 
 | Task/Microgoal | Progress Notes | % Complete |
-|----------------|---------------|------------|
 <<<<<<< Updated upstream
-| Integrate Ollama for local LLM agent | Environment setup and some tests fixed. | 20% |
 | Add Agent-Zero for code review/planning | Environment setup and some tests fixed. | 20% |
-| Set up OpenAI Codex for code generation | Environment setup and some tests fixed. | 20% |
 | Create DEVELOPMENT.md and AGENT.md docs | Docs created and committed. | 1020% |
 | Create SRS with microgoals and measurable criteria | Environment setup and some tests fixed. | 20% |
 | Automate db migration/health scripts | Scripts created, tested, and documented. | 1020% |
-| Document all new scripts in PROJECT_STRUCTURE.md | PROJECT_STRUCTURE.md updated. | 1020% |
 | Implement Codex delegation workflow | Script created, tested, and documented. | 1020% |
-| Implement Ollama delegation workflow | Environment setup and some tests fixed. | 20% |
 | Implement Ollama agent API for workload submission | API endpoint created and tested. | 1020% |
-| Implement Ollama agent background worker | Worker implemented and tested. | 1020% |
 | Implement Ollama agent webhook/callback | Webhook implemented and tested. | 1020% |
 | Implement Ollama agent result/status API | API endpoint created and tested. | 1020% |
 | Document MCP server API endpoints | API reference written and committed. | 1020% |
-| Integrate MCP server endpoints with UI | Environment setup and some tests fixed. | 20% |
 | GovInfo: Data Download | Environment setup and some tests fixed. | 20% |
-| GovInfo: Database Design | Environment setup and some tests fixed. | 20% |
 | GovInfo: ERD Creation | Environment setup and some tests fixed. | 20% |
 | GovInfo: Documentation | Environment setup and some tests fixed. | 20% |
 | Committee: Database Design | Environment setup and some tests fixed. | 20% |
