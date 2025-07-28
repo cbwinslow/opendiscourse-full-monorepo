@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -62,7 +61,8 @@ labels: [enhancement, feature]
 milestone: Data Ingestion & Automation
 ---
 
-Build an LLM-based ensemble model that ingests news content and assigns a bias rating based on:
+Build an LLM-based ensemble model that ingests news content and assigns a bias
+rating based on:
 - Language polarity
 - Sentiment toward political entities
 - Alignment with partisan narratives

@@ -19,6 +19,19 @@ import xmlschema
 from dotenv import load_dotenv
 from psycopg2.extensions import connection as PgConnection
 
+# Local imports
+from ...config.govinfo_config import (
+    CollectionType,
+    DocumentStatus,
+    ErrorType,
+    COLLECTION_TYPES,
+    SCHEMA_VERSIONS,
+    REQUIRED_FIELDS,
+    PROCESSING_CONFIG,
+    XML_NAMESPACES,
+    METADATA_XPATHS,
+)
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -28,56 +41,6 @@ load_dotenv()
 # Type aliases
 JsonDict = Dict[str, Any]
 ValidationResult = Dict[str, Union[bool, List[str], str]]
-
-
-# Collection types
-class CollectionType:
-    """Supported document collection types."""
-
-    BILLS = "BILLS"
-    CFR = "CFR"
-    FEDERAL_REGISTER = "FR"
-    COMMITTEE_HEARINGS = "CHRG"
-
-
-# Collection type metadata
-COLLECTION_TYPES: Dict[str, str] = {
-    CollectionType.BILLS: "Bills",
-    CollectionType.CFR: "Code of Federal Regulations",
-    CollectionType.FEDERAL_REGISTER: "Federal Register",
-    CollectionType.COMMITTEE_HEARINGS: "Committee Hearings",
-}
-
-# Schema validation
-SCHEMA_VERSIONS: Dict[str, str] = {
-    CollectionType.BILLS: "uslm-2.1.0.xsd",
-    CollectionType.CFR: "uslm-2.1.0.xsd",
-    CollectionType.FEDERAL_REGISTER: "uslm-2.1.0.xsd",
-    CollectionType.COMMITTEE_HEARINGS: "uslm-2.1.0.xsd",
-}
-
-
-# Document status constants
-class DocumentStatus:
-    """Document processing statuses."""
-
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    ERROR = "error"
-    VALIDATING = "validating"
-    VALID = "valid"
-    INVALID = "invalid"
-
-
-# Error types
-class ErrorType:
-    """Error types for document processing."""
-
-    SCHEMA_VALIDATION = "schema_validation"
-    METADATA_VALIDATION = "metadata_validation"
-    VERSION_CONFLICT = "version_conflict"
-    PROCESSING_ERROR = "processing_error"
 
 
 def get_db_connection() -> PgConnection:
@@ -172,24 +135,19 @@ def validate_metadata(metadata: JsonDict, collection: str) -> ValidationResult:
         - is_valid: Boolean indicating if all required fields are present
         - errors: List of error messages for missing fields
     """
-    # Define required fields for each collection type
-    required_fields = {
-        CollectionType.BILLS: ["title", "version", "document_id"],
-        CollectionType.CFR: ["title", "version", "document_id"],
-        CollectionType.FEDERAL_REGISTER: ["title", "version", "document_id"],
-        CollectionType.COMMITTEE_HEARINGS: ["title", "version", "document_id"],
-    }
-
     errors: List[str] = []
 
+    # Get required fields from configuration
+    required_fields = REQUIRED_FIELDS.get(collection, ["title", "version", "document_id"])
+
     # Check for missing required fields
-    for field in required_fields.get(collection, []):
+    for field in required_fields:
         if not metadata.get(field):
             errors.append(f"Missing required field: {field}")
 
     # Check for empty values in required fields
     for field, value in metadata.items():
-        if field in required_fields.get(collection, []) and not value:
+        if field in required_fields and not value:
             errors.append(f"Empty value for required field: {field}")
 
     return {

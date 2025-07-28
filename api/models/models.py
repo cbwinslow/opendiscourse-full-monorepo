@@ -1,14 +1,16 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
-from datetime import datetime
+
 
 # Request Models
 class SearchRequest(BaseModel):
     """Request model for search operations."""
     query: str = Field(..., description="Search query string")
     k: int = Field(10, description="Number of results to return")
-    filters: Optional[Dict[str, Any]] = Field(None, description="Optional search filters")
-    
+    filters: Optional[Dict[str, Any]] = Field(
+        None, description="Optional search filters"
+    )
+
     class Config:
         schema_extra = {
             "example": {
@@ -18,11 +20,16 @@ class SearchRequest(BaseModel):
             }
         }
 
+
 class DocumentRequest(BaseModel):
     """Request model for document operations."""
-    documents: List[Dict[str, Any]] = Field(..., description="List of documents to process")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Optional metadata")
-    
+    documents: List[Dict[str, Any]] = Field(
+        ..., description="List of documents to process"
+    )
+    metadata: Optional[Dict[str, Any]] = Field(
+        None, description="Optional metadata"
+    )
+
     class Config:
         schema_extra = {
             "example": {
@@ -36,10 +43,13 @@ class DocumentRequest(BaseModel):
             }
         }
 
+
 class ConfigurationRequest(BaseModel):
     """Request model for configuration updates."""
-    settings: Dict[str, Any] = Field(..., description="Configuration settings to update")
-    
+    settings: Dict[str, Any] = Field(
+        ..., description="Configuration settings to update"
+    )
+
     class Config:
         schema_extra = {
             "example": {
@@ -51,11 +61,16 @@ class ConfigurationRequest(BaseModel):
             }
         }
 
+
 class HealthCheckRequest(BaseModel):
     """Request model for health checks."""
-    components: Optional[List[str]] = Field(None, description="Specific components to check")
-    detailed: bool = Field(False, description="Whether to return detailed status")
-    
+    components: Optional[List[str]] = Field(
+        None, description="Specific components to check"
+    )
+    detailed: bool = Field(
+        False, description="Whether to return detailed status"
+    )
+
     class Config:
         schema_extra = {
             "example": {
@@ -63,6 +78,7 @@ class HealthCheckRequest(BaseModel):
                 "detailed": True
             }
         }
+
 
 # Response Models
 class SearchResult(BaseModel):
@@ -72,16 +88,19 @@ class SearchResult(BaseModel):
     score: float
     metadata: Optional[Dict[str, Any]]
 
+
 class SearchResponse(BaseModel):
     """Response model for search operations."""
     results: List[SearchResult]
     metadata: Dict[str, Any]
+
 
 class DocumentResponse(BaseModel):
     """Response model for document operations."""
     success: bool
     document_ids: List[str]
     metadata: Optional[Dict[str, Any]]
+
 
 class HealthStatus(BaseModel):
     """Model for component health status."""
@@ -90,11 +109,13 @@ class HealthStatus(BaseModel):
     error_message: Optional[str]
     details: Optional[Dict[str, Any]]
 
+
 class HealthCheckResponse(BaseModel):
     """Response model for health checks."""
     status: str
     details: Dict[str, HealthStatus]
     timestamp: str
+
 
 class MetricValue(BaseModel):
     """Model for metric values."""
@@ -103,6 +124,7 @@ class MetricValue(BaseModel):
     peak: float
     timestamp: str
 
+
 class MetricsResponse(BaseModel):
     """Response model for metrics endpoint."""
     latency: MetricValue
@@ -110,6 +132,7 @@ class MetricsResponse(BaseModel):
     error_rate: MetricValue
     system_metrics: Dict[str, MetricValue]
     store_metrics: Dict[str, Dict[str, MetricValue]]
+
 
 class AnomalyResponse(BaseModel):
     """Response model for anomaly detection."""

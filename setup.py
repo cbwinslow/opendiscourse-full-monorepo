@@ -6,14 +6,21 @@ setup(
     packages=find_packages(),
     install_requires=[
         # Core dependencies
-        "fastapi>=0.68.0",
-        "uvicorn>=0.15.0",
-        "pydantic>=1.8.0",
-        "sqlalchemy>=1.4.0",
+        "fastapi>=0.104.0",
+        "uvicorn>=0.24.0",
+        "pydantic>=2.0.0",
+        "pydantic-settings>=2.0.0",
+        "sqlalchemy>=2.0.0",
+        "psycopg2-binary>=2.9.0",
+        "python-dotenv>=1.0.0",
+        "transformers>=4.20.0",
         "python-jose[cryptography]>=3.3.0",
         "passlib[bcrypt]>=1.7.4",
         "python-multipart>=0.0.5",
         "httpx>=0.23.0",
+        "requests>=2.32.0",
+        "numpy>=1.24.0",
+        "pandas>=2.1.0",
     ],
     extras_require={
         "dev": [

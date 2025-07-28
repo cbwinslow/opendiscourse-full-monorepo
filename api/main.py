@@ -1,16 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict, Any
-import asyncio
+from typing import Optional
 from datetime import datetime
-import json
 
 from models.request_models import (
     SearchRequest,
     DocumentRequest,
     ConfigurationRequest,
-    HealthCheckRequest
 )
 from models.response_models import (
     SearchResponse,
@@ -44,6 +41,7 @@ vector_store_service = VectorStoreService(settings)
 monitoring_service = MonitoringService(settings)
 health_check_service = HealthCheckService(settings)
 
+
 @app.get("/health")
 async def health_check() -> HealthCheckResponse:
     """Check the health status of all system components."""
@@ -57,6 +55,7 @@ async def health_check() -> HealthCheckResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/search")
 async def search(
     request: SearchRequest,
@@ -66,21 +65,21 @@ async def search(
     try:
         # Record operation start
         operation_id = monitoring_service.start_operation("search")
-        
+
         # Perform search
         results = await vector_store_service.search(
             query=request.query,
             k=request.k,
             filters=request.filters
         )
-        
+
         # Record metrics in background
         background_tasks.add_task(
             monitoring_service.record_operation_complete,
             operation_id=operation_id,
             status="success"
         )
-        
+
         return SearchResponse(
             results=results,
             metadata={
@@ -88,7 +87,7 @@ async def search(
                 "query_time": monitoring_service.get_operation_duration(operation_id)
             }
         )
-        
+
     except Exception as e:
         # Record error in background
         background_tasks.add_task(
@@ -99,6 +98,7 @@ async def search(
         )
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/documents")
 async def add_documents(
     request: DocumentRequest,
@@ -107,26 +107,26 @@ async def add_documents(
     """Add documents to vector stores."""
     try:
         operation_id = monitoring_service.start_operation("add_documents")
-        
+
         # Process and add documents
         results = await vector_store_service.add_documents(
             documents=request.documents,
             metadata=request.metadata
         )
-        
+
         # Record success in background
         background_tasks.add_task(
             monitoring_service.record_operation_complete,
             operation_id=operation_id,
             status="success"
         )
-        
+
         return DocumentResponse(
             success=True,
             document_ids=results.document_ids,
             metadata=results.metadata
         )
-        
+
     except Exception as e:
         background_tasks.add_task(
             monitoring_service.record_operation_complete,
@@ -136,6 +136,7 @@ async def add_documents(
         )
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.delete("/documents/{document_id}")
 async def delete_document(
     document_id: str,
@@ -144,20 +145,20 @@ async def delete_document(
     """Delete a document from vector stores."""
     try:
         operation_id = monitoring_service.start_operation("delete_document")
-        
+
         await vector_store_service.delete_document(document_id)
-        
+
         background_tasks.add_task(
             monitoring_service.record_operation_complete,
             operation_id=operation_id,
             status="success"
         )
-        
+
         return JSONResponse(
             content={"success": True, "document_id": document_id},
             status_code=200
         )
-        
+
     except Exception as e:
         background_tasks.add_task(
             monitoring_service.record_operation_complete,
@@ -166,6 +167,7 @@ async def delete_document(
             error=str(e)
         )
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/metrics")
 async def get_metrics(
@@ -178,6 +180,7 @@ async def get_metrics(
         return MetricsResponse(**metrics)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/config")
 async def update_configuration(
@@ -192,6 +195,7 @@ async def update_configuration(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/anomalies")
 async def get_anomalies(
