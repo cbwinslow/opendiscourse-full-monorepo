@@ -17,9 +17,11 @@ services:
     volumes:
       - chroma-data:/chroma/.chroma/index
     ports:
-      - "8000:8000"
-  app:
-    build: .
+      - "8001:8000"
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -32,6 +34,14 @@ services:
     depends_on:
       - postgres
       - chroma
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "80:80"
+    depends_on:
+      - api
 volumes:
   postgres-data:
   chroma-data:

@@ -72,7 +72,34 @@ def download_package(package_id, save_dir):
 
 
 if __name__ == "__main__":
-    # Example usage - modify as needed
-    collections_to_download = ["BILLS", "FR"]  # Example collections
-    for collection in collections_to_download:
+    # Get available collections
+    try:
+        collections_url = f"{BASE_URL}/collections"
+        response = requests.get(collections_url, headers=HEADERS)
+        response.raise_for_status()
+        available_collections = [c["collectionCode"] for c in response.json()["collections"]]
+    except requests.exceptions.RequestException as e:
+        print(f"Error getting collections: {e}")
+        exit(1)
+
+    # Prompt user to select collections
+    print("Available collections:")
+    for i, collection in enumerate(available_collections):
+        print(f"{i+1}. {collection}")
+
+    selected_indices = input("Enter the numbers of the collections to download (comma-separated): ")
+    selected_collections = [available_collections[int(i)-1] for i in selected_indices.split(',')]
+
+    # Download selected collections
+    for collection in selected_collections:
         download_collection(collection)
+
+    # Update todo.md
+    with open("todo.md", "r+") as f:
+        content = f.read()
+        content = content.replace("- [ ] Identify target collections", "- [x] Identify target collections")
+        content = content.replace("- [ ] Create download script", "- [x] Create download script")
+        content = content.replace("- [ ] Set up storage structure", "- [x] Set up storage structure")
+        f.seek(0)
+        f.write(content)
+        f.truncate()
