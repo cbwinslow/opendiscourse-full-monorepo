@@ -1,0 +1,5 @@
+# Core dependencies for Open Discourse
+
+redis
+weaviate-client
+chromadb

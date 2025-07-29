@@ -15,7 +15,7 @@ dist/
 *.venv
 .pytest_cache/
 .mypy_cache/
-.ruff_cache/
+.ruff
 
 # Environment variables
 .env
@@ -222,3 +222,4 @@ temp/
 dimensional-debris/
 opendiscourse-*/
 
+.cpqdevkit/**

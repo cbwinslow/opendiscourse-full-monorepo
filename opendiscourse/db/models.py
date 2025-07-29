@@ -7,10 +7,15 @@ from __future__ import annotations
 
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Any, TypeVar, final
+<<<<<<< Updated upstream
+from datetime import datetime
+=======
+from uuid import UUID
+>>>>>>> Stashed changes
 
-from sqlalchemy import DateTime, Integer, String, text
+from sqlalchemy import DateTime, Float, Integer, String, text
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as SQLAlchemyUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from typing_extensions import Self, override
 
@@ -232,3 +237,111 @@ class Entity(EntityBase):
                 raise ValueError(msg) from e
 
         return entity
+
+
+class TaskStatus(str, PyEnum):
+    """Status values for tasks."""
+    TODO = "todo"
+    IN_PROGRESS = "in-progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class TaskPriority(str, PyEnum):
+    """Priority levels for tasks."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class Task(EntityBase):
+    """Task model for tracking work items and assignments."""
+
+    __tablename__ = "tasks"
+
+    id: Mapped[str] = mapped_column(SQLAlchemyUUID(as_uuid=False), primary_key=True)
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    description: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[TaskStatus] = mapped_column(
+        SQLEnum(TaskStatus, name="task_status_enum"),
+        nullable=False,
+        default=TaskStatus.TODO,
+        index=True
+    )
+    priority: Mapped[TaskPriority] = mapped_column(
+        SQLEnum(TaskPriority, name="task_priority_enum"),
+        nullable=False,
+        default=TaskPriority.MEDIUM,
+        index=True
+    )
+    assignee: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=True,
+        server_default=text("{}"),
+    )
+    entity_ids: Mapped[list[str] | None] = mapped_column(
+        ARRAY(SQLAlchemyUUID(as_uuid=False)), nullable=True
+    )
+    document_ids: Mapped[list[str] | None] = mapped_column(
+        ARRAY(SQLAlchemyUUID(as_uuid=False)), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Task(id={self.id}, title='{self.title}', status={self.status})>"
+
+
+class Inference(EntityBase):
+    """Inference model for storing AI-generated insights and conclusions."""
+
+    __tablename__ = "inferences"
+
+    id: Mapped[str] = mapped_column(SQLAlchemyUUID(as_uuid=False), primary_key=True)
+    type: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(String, nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source_document_id: Mapped[str | None] = mapped_column(
+        SQLAlchemyUUID(as_uuid=False), nullable=True
+    )
+    source_task_id: Mapped[str | None] = mapped_column(
+        SQLAlchemyUUID(as_uuid=False), nullable=True
+    )
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=True,
+        server_default=text("{}"),
+    )
+    entity_ids: Mapped[list[str] | None] = mapped_column(
+        ARRAY(SQLAlchemyUUID(as_uuid=False)), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Inference(id={self.id}, type='{self.type}', confidence={self.confidence})>"
