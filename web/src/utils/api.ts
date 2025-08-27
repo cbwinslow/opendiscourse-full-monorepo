@@ -108,7 +108,7 @@ class ApiClient {
     return this.get(`/documents/${id}`);
   }
 
-  async auth() {
+  auth() {
     return {
       login: (username: string, password: string) =>
         this.post('/auth/login', { username, password }),
@@ -119,7 +119,7 @@ class ApiClient {
     };
   }
 
-  async analytics() {
+  analytics() {
     return {
       track: (event: string, metadata?: Record<string, any>) =>
         this.post('/track', { event, path: window.location.pathname, ...metadata }),
