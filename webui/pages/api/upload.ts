@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import formidable from "formidable";
 import fs from "fs";
+import path from "path";
 
 export const config = {
   api: { bodyParser: false },
@@ -32,9 +33,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     
     try {
+      // Verify the file path is within /tmp to prevent path traversal
+      const TMP_ROOT = "/tmp";
+      const absFilePath = fs.realpathSync(path.resolve(TMP_ROOT, path.basename(file.filepath)));
+      if (!absFilePath.startsWith(TMP_ROOT)) {
+        res.status(400).json({ error: "Invalid file path" });
+        return;
+      }
       // Create form data for backend API
       const formData = new FormData();
-      const fileBuffer = fs.readFileSync(file.filepath);
+      const fileBuffer = fs.readFileSync(absFilePath);
       const blob = new Blob([fileBuffer], { type: file.mimetype || 'application/octet-stream' });
       formData.append('file', blob, file.originalFilename || 'uploaded-file');
       
@@ -49,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const data = await apiRes.json();
       
       // Clean up temp file
-      fs.unlinkSync(file.filepath);
+      fs.unlinkSync(absFilePath);
       
       res.status(apiRes.status).json(data);
     } catch (e: any) {
