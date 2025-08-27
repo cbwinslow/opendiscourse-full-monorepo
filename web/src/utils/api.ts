@@ -55,14 +55,14 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
@@ -74,19 +74,19 @@ class ApiClient {
   }
 
   // Specialized methods for OpenDiscourse API
-  async ragQuery(query: string, filters?: Record<string, any>) {
+  async ragQuery(query: string, filters?: Record<string, unknown>) {
     return this.post('/rag', { question: query, filters });
   }
 
   async searchDocuments(query: string, options?: {
     maxResults?: number;
     threshold?: number;
-    filters?: Record<string, any>;
+    filters?: Record<string, unknown>;
   }) {
     return this.post('/documents/search', { query, ...options });
   }
 
-  async uploadDocument(file: File, metadata?: Record<string, any>) {
+  async uploadDocument(file: File, metadata?: Record<string, unknown>) {
     const formData = new FormData();
     formData.append('file', file);
     if (metadata) {
@@ -121,7 +121,7 @@ class ApiClient {
 
   analytics() {
     return {
-      track: (event: string, metadata?: Record<string, any>) =>
+      track: (event: string, metadata?: Record<string, unknown>) =>
         this.post('/track', { event, path: window.location.pathname, ...metadata }),
       
       getStats: () => this.get('/analytics/stats'),

@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { query, maxResults = 20, threshold = 0.5, filters } = await request.json();
+    const { query, filters } = await request.json();
 
-    // In a real app, this would search your document database
+    // In a real app, this would search your document database with vector embeddings
     // For demo purposes, we'll return mock data
     const mockDocuments = [
       {
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
+    console.error('Document search error:', error);
     return NextResponse.json(
       {
         success: false,

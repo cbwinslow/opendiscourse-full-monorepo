@@ -27,7 +27,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const response = await apiClient.auth().whoami();
       if (response.success && response.data) {
-        const data = response.data as any;
+        const data = response.data as { user?: User };
         if (data.user) {
           setUser(data.user);
         } else {

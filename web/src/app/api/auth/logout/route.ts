@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Clear the authentication cookie
     const response = NextResponse.json({
@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
+    console.error('Logout error:', error);
     return NextResponse.json(
       {
         success: false,

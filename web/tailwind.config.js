@@ -2,11 +2,10 @@
 export default {
   darkMode: ["class"],
   content: [
-    "./web/src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./web/src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./web/src/app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./web/src/**/*.{js,ts,jsx,tsx,mdx}",
-    "./web/**/*.{js,ts,jsx,tsx,html}",
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     container: {
@@ -78,8 +77,31 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ['Inter', 'var(--font-sans)', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: [
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          '"Helvetica Neue"',
+          'Arial',
+          '"Noto Sans"',
+          'sans-serif',
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+          '"Segoe UI Symbol"',
+          '"Noto Color Emoji"'
+        ],
+        mono: [
+          'ui-monospace',
+          'SFMono-Regular',
+          '"Cascadia Code"',
+          '"Roboto Mono"',
+          'Consolas',
+          '"Liberation Mono"',
+          'Menlo',
+          'monospace'
+        ],
       },
       animation: {
         "fade-in": "fadeIn 0.3s ease-out",

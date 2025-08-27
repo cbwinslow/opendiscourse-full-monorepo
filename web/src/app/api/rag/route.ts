@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { question, filters } = await request.json();
+    const { question } = await request.json();
 
     if (!question) {
       return NextResponse.json(
@@ -62,6 +62,7 @@ This response is generated from analysis of relevant government documents in the
       data: mockResponse
     });
   } catch (error) {
+    console.error('RAG processing error:', error);
     return NextResponse.json(
       {
         success: false,
