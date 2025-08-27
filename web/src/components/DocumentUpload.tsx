@@ -101,7 +101,7 @@ export function DocumentUpload({
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      const result = await response.json();
+      await response.json();
 
       setUploadedFiles(prev => 
         prev.map(f => 

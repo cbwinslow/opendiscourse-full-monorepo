@@ -1,3 +1,5 @@
+'use client';
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/types';
 import { apiClient } from '@/utils/api';
@@ -24,8 +26,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const checkAuth = async () => {
     try {
       const response = await apiClient.auth().whoami();
-      if (response.success && response.data?.user) {
-        setUser(response.data.user);
+      if (response.success && response.data) {
+        const data = response.data as { user?: User };
+        if (data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
       } else {
         setUser(null);
       }

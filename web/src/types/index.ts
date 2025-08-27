@@ -28,7 +28,7 @@ export interface RAGQuery {
   query: string;
   maxResults?: number;
   threshold?: number;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
 }
 
 export interface RAGResult {
@@ -43,16 +43,16 @@ export interface SearchResult {
   documents: Document[];
   totalCount: number;
   query: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   requestId?: string;
 }
@@ -82,5 +82,5 @@ export interface AnalyticsEvent {
   path: string;
   timestamp: Date;
   userId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
