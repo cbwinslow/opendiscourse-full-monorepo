@@ -222,4 +222,4 @@ temp/
 dimensional-debris/
 opendiscourse-*/
 
-.cpqdevkit/**
+.cpqdevkit/**.next/

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 
 interface SearchResult {
   id: string;
@@ -8,7 +8,7 @@ interface SearchResult {
   source: string;
   entities: string[];
   highlights: string[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 interface SearchFilters {
@@ -46,7 +46,7 @@ export function SearchInterface({ onSearch, initialQuery = '' }: SearchInterface
         page: page.toString(),
         limit: '10',
         ...Object.fromEntries(
-          Object.entries(searchFilters).filter(([_, v]) => v != null && v !== '')
+          Object.entries(searchFilters).filter(([, v]) => v != null && v !== '')
         )
       });
 
