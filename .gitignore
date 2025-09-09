@@ -48,14 +48,13 @@ ARCHIVE_*.md
 *_backup_*.tar.gz
 *.backup
 
-# Test coverage
-htmlcov/
-.coverage
-.coverage.*
-.coverage.*.c
-.coverage.*.json
-.coverage.xml
-.nox/
+# Frontend build output and dependencies
+node_modules/
+.next/
+.nuxt/
+dist/
+build/
+*.tsbuildinfo
 
 # Pre-commit
 .pre-commit-config.yaml

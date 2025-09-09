@@ -7,11 +7,8 @@ from __future__ import annotations
 
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Any, TypeVar, final
-<<<<<<< Updated upstream
 from datetime import datetime
-=======
 from uuid import UUID
->>>>>>> Stashed changes
 
 from sqlalchemy import DateTime, Float, Integer, String, text
 from sqlalchemy import Enum as SQLEnum

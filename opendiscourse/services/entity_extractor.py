@@ -611,10 +611,7 @@ def main():
     except Exception as e:
         logger.error("Error in main entity extraction process: %s", str(e), exc_info=True)
         raise
-<<<<<<< Updated upstream
 
 
 if __name__ == "__main__":
     main()
-=======
->>>>>>> Stashed changes

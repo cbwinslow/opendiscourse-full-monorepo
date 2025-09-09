@@ -1,33 +1,66 @@
 # Project Tasks (Consolidated)
 
-This file consolidates all project tasks, microgoals, and agent assignments from previous task files.
+This file consolidates all project tasks, microgoals, and agent assignments for the OpenDiscourse project.
 
-## Task Table
+## High-Priority Tasks
 
 | Task/Microgoal                                      | Criteria/Definition                                      | Status    | Assigned Agent |
-|-----------------------------------------------------|---------------------------------------------------------|-----------|---------------|
-| Integrate Ollama for local LLM agent                | Ollama installed, model running, API accessible         | IN PROGRESS      | Ollama        |
-| Add Agent-Zero for code review/planning             | Agent-Zero app added to repo, PRs reviewed              | IN PROGRESS      | Agent-Zero    |
-| Set up OpenAI Codex for code generation             | API key configured, script runs, code generated         | IN PROGRESS      | OpenAI Codex  |
+|-----------------------------------------------------|--------------------------------------------------------|-----------|---------------|
+| Integrate Ollama for local LLM agent                | Ollama installed, model running, API accessible         | DONE      | Ollama        |
+| Add Agent-Zero for code review/planning             | Agent-Zero app added to repo, PRs reviewed              | DONE      | Agent-Zero    |
+| Set up OpenAI Codex for code generation             | API key configured, script runs, code generated         | DONE      | OpenAI Codex  |
 | Create DEVELOPMENT.md and AGENT.md docs             | Docs exist, describe workflow and agent setup           | DONE      | Copilot       |
-<<<<<<< Updated upstream
-| Create SRS with microgoals and measurable criteria  | SRS exists, microgoals listed, criteria defined         | IN PROGRESS      | Copilot       |
-| Automate db migration/health scripts                | Scripts exist, run, and are documented                  | DONE      | Copilot       |
-| Document all new scripts in PROJECT_STRUCTURE.md    | PROJECT_STRUCTURE.md updated with new scripts           | DONE      | Copilot       |
-| Implement Codex delegation workflow                 | Script exists, documented, can send prompt to Codex and save result | DONE      | Copilot       |
-| Implement Ollama delegation workflow                | Script exists, documented, can send prompt to Ollama and save result | IN PROGRESS      | Copilot       |
-=======
 | Create SRS with microgoals and measurable criteria  | SRS exists, microgoals listed, criteria defined         | DONE      | Copilot       |
+| Fix frontend build system                          | Dependencies restored, build successful                   | DONE      | Copilot       |
+| Clean up repository structure                      | Temporary files removed, .gitignore updated              | DONE      | Copilot       |
+| Resolve merge conflicts                            | All conflict markers removed, code compiles              | IN PROGRESS | Copilot       |
+
+## Development Infrastructure
+
+| Task/Microgoal                                      | Criteria/Definition                                      | Status    | Assigned Agent |
+|-----------------------------------------------------|--------------------------------------------------------|-----------|---------------|
 | Automate db migration/health scripts                | Scripts exist, run, and are documented                  | DONE      | Copilot       |
 | Document all new scripts in PROJECT_STRUCTURE.md    | PROJECT_STRUCTURE.md updated with new scripts           | DONE      | Copilot       |
 | Implement Codex delegation workflow                 | Script exists, documented, can send prompt to Codex and save result | DONE      | Copilot       |
 | Implement Ollama delegation workflow                | Script exists, documented, can send prompt to Ollama and save result | DONE      | Copilot       |
->>>>>>> Stashed changes
 | Implement Ollama agent API for workload submission  | API endpoint exists, accepts prompt, returns ID          | DONE      | Copilot       |
 | Implement Ollama agent background worker            | Worker processes prompt, stores result, handles errors   | DONE      | Copilot       |
 | Implement Ollama agent webhook/callback             | Webhook endpoint exists, receives and logs notifications | DONE      | Copilot       |
 | Implement Ollama agent result/status API            | API endpoint returns status/result for given ID          | DONE      | Copilot       |
 | Document MCP server API endpoints                   | API reference exists in docs, endpoints described        | DONE      | Copilot       |
+
+## Testing & Quality Assurance
+
+| Task/Microgoal                                      | Criteria/Definition                                      | Status    | Assigned Agent |
+|-----------------------------------------------------|--------------------------------------------------------|-----------|---------------|
+| Set up test infrastructure                          | pytest working, tests runnable                          | BLOCKED   | Copilot       |
+| Implement code quality checks                      | Linting, type checking, formatting working               | DONE      | Copilot       |
+| Add integration tests                              | API tests, database tests working                        | TODO      | TBD           |
+| Add performance tests                              | Load testing, benchmarking available                     | TODO      | TBD           |
+
+## Documentation & Organization
+
+| Task/Microgoal                                      | Criteria/Definition                                      | Status    | Assigned Agent |
+|-----------------------------------------------------|--------------------------------------------------------|-----------|---------------|
+| Consolidate documentation                          | Documentation organized, duplicate files removed         | DONE      | Copilot       |
+| Update onboarding guide                           | Clear, accurate developer onboarding                     | DONE      | Copilot       |
+| API documentation review                          | API docs accurate and complete                            | TODO      | TBD           |
+| Architecture documentation                        | System architecture clearly documented                    | TODO      | TBD           |
+
+## Next Steps
+
+1. **Resolve remaining merge conflicts** - Clean up all conflict markers in codebase
+2. **Fix Python package imports** - Resolve missing dependencies for backend
+3. **Set up test infrastructure** - Get pytest working properly
+4. **API testing** - Verify all API endpoints work correctly
+5. **Performance optimization** - Review and optimize build processes
+
+## Notes
+
+- Many tasks marked as DONE were completed in previous development cycles
+- Current focus is on making the repository functional and maintainable
+- Testing infrastructure is blocked due to network connectivity issues preventing pytest installation
+- Frontend build system has been successfully restored
 <<<<<<< Updated upstream
 | Integrate MCP server endpoints with UI              | UI can submit, poll, and display results from MCP server | IN PROGRESS      | Copilot       |
 | GovInfo: Data Download                             | Identify target collections, create download script, set up storage | IN PROGRESS      | Copilot       |
