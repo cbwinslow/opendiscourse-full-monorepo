@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/api/auth/logout/route": "app/api/auth/logout/route.js",
+  "/api/auth/whoami/route": "app/api/auth/whoami/route.js",
+  "/api/documents/route": "app/api/documents/route.js",
+  "/api/documents/search/route": "app/api/documents/search/route.js",
+  "/api/rag/route": "app/api/rag/route.js",
+  "/chat/page": "app/chat/page.js",
+  "/documents/page": "app/documents/page.js",
+  "/search/page": "app/search/page.js",
+  "/page": "app/page.js"
+}

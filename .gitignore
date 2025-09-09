@@ -40,6 +40,14 @@ dist/
 *.log
 logs/
 
+# Temporary files and generated content
+DIFF_*.md
+RECOMMENDATIONS_*.md
+ARCHIVE_*.md
+.delete_these_files.txt
+*_backup_*.tar.gz
+*.backup
+
 # Test coverage
 htmlcov/
 .coverage
