@@ -1,23 +1,61 @@
-<<<<<<< Updated upstream
-# Onboarding Guide
-
-Welcome to the OpenDiscourse project! This short guide will help new contributors get started quickly.
-
-## Steps
-
-1. **Read `docs/README.md`** for an overview of the project structure and documentation.
-2. **Follow the [Development Setup Guide](guides/DEVELOPMENT_SETUP.md)** to configure Python, PostgreSQL, and Node.js.
-3. **Run the tests** to verify your environment:
-   ```bash
-   pip install -r requirements-dev.txt --break-system-packages
-   pytest -q
-   ```
-4. **Create a new branch** for your work and ensure tasks are tracked in `TASKS.md`.
-5. **Submit Pull Requests** following the contribution guidelines in `CONTRIBUTING.md` if available.
-
-Happy hacking!
-=======
 # OpenDiscourse Developer Onboarding Guide
+
+Welcome to the OpenDiscourse project! This guide will help you get up and running as a contributor to our enterprise government document analysis platform.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Python 3.11+** (for backend development)
+- **Node.js 18+** (for frontend development)
+- **PostgreSQL 14+** with pgvector extension
+- **Git** (for version control)
+- **Docker** (optional, for containerized development)
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/cbwinslow/opendiscourse.git
+cd opendiscourse
+```
+
+### 2. Development Setup
+Follow the detailed [Development Setup Guide](guides/DEVELOPMENT_SETUP.md) for complete environment configuration.
+
+### 3. Quick Verification
+```bash
+# Backend dependencies
+pip install -r requirements-dev.txt
+
+# Frontend dependencies
+pnpm install
+
+# Run tests (if available)
+pytest -q
+
+# Start development servers
+pnpm dev  # Frontend
+python -m opendiscourse  # Backend
+```
+
+### 4. Development Workflow
+1. **Create a feature branch** for your work
+2. **Track tasks** in relevant documentation
+3. **Follow coding standards** and testing requirements
+4. **Submit Pull Requests** with clear descriptions
+
+## 📚 Key Resources
+
+- [Project Documentation](README.md) - Complete documentation overview
+- [API Reference](api/API_REFERENCE.md) - REST API documentation
+- [Development Setup](guides/DEVELOPMENT_SETUP.md) - Detailed environment setup
+- [Project Structure](PROJECT_STRUCTURE.md) - Codebase organization
+
+## 🤝 Getting Help
+
+- **GitHub Issues**: Report bugs and request features
+- **Discussions**: Ask questions and share ideas
+- **Documentation**: Comprehensive guides in `/docs`
+
+Happy coding!
 
 Welcome to the OpenDiscourse project! This guide will help you get up and running as a contributor to our enterprise government document analysis platform.
 

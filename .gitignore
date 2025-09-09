@@ -40,14 +40,21 @@ dist/
 *.log
 logs/
 
-# Test coverage
-htmlcov/
-.coverage
-.coverage.*
-.coverage.*.c
-.coverage.*.json
-.coverage.xml
-.nox/
+# Temporary files and generated content
+DIFF_*.md
+RECOMMENDATIONS_*.md
+ARCHIVE_*.md
+.delete_these_files.txt
+*_backup_*.tar.gz
+*.backup
+
+# Frontend build output and dependencies
+node_modules/
+.next/
+.nuxt/
+dist/
+build/
+*.tsbuildinfo
 
 # Pre-commit
 .pre-commit-config.yaml
