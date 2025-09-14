@@ -50,7 +50,7 @@ resource "cloudflare_tunnel_config" "db" {
     ingress = [
       {
         hostname = var.db_hostname
-        service  = "tcp://${oci_database_postgresql_db_system.pg.private_ip}:${oci_database_postgresql_db_system.pg.listen_port}"
+        service  = "tcp://${oci_database_postgresql_db_system.pg.private_ip}:${var.postgres_port}"
       },
       {
         service = "http_status:404"
