@@ -1,0 +1,144 @@
+---
+# LocalAI Installation and Configuration
+- name: Ensure system dependencies are installed
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+      - python3-venv
+      - docker.io
+      - docker-compose
+      - nvidia-container-toolkit  # Only if GPU support is enabled
+    state: present
+    update_cache: yes
+  when: ansible_os_family == 'Debian'
+  tags: [dependencies, system]
+
+- name: Create LocalAI base directory
+  ansible.builtin.file:
+    path: "{{ local_ai_base_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ local_ai_user }}"
+    group: "{{ local_ai_group }}"
+
+- name: Create required subdirectories
+  ansible.builtin.file:
+    path: "{{ local_ai_base_dir }}/{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ local_ai_user }}"
+    group: "{{ local_ai_group }}"
+  loop:
+    - models
+    - config
+    - data
+    - logs
+
+- name: Deploy LocalAI configuration
+  ansible.builtin.template:
+    src: local-ai-config.yaml.j2
+    dest: "{{ local_ai_base_dir }}/config/config.yaml"
+    mode: '0640'
+    owner: "{{ local_ai_user }}"
+    group: "{{ local_ai_group }}"
+  notify: restart localai
+
+- name: Deploy docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ local_ai_base_dir }}/docker-compose.yml"
+    mode: '0640'
+    owner: "{{ local_ai_user }}"
+    group: "{{ local_ai_group }}"
+  notify: restart localai
+
+- name: Deploy environment file
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ local_ai_base_dir }}/.env"
+    mode: '0600'
+    owner: "{{ local_ai_user }}"
+    group: "{{ local_ai_group }}"
+  notify: restart localai
+
+# Docker and Container Management
+- name: Ensure Docker service is running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Pull LocalAI Docker images
+  community.docker.docker_image:
+    name: "{{ item.image }}"
+    source: pull
+    tag: "{{ item.tag | default('latest') }}"
+    force_source: "{{ item.force | default(false) }}"
+  loop: "{{ local_ai_images }}"
+  register: docker_pull
+  retries: 3
+  delay: 10
+  until: docker_pull is not failed
+  notify: restart localai
+
+- name: Deploy LocalAI services
+  community.docker.docker_compose_v2:
+    project_src: "{{ local_ai_base_dir }}"
+    state: present
+    pull: yes
+    recreate: always
+    remove_orphans: yes
+    stopped: no
+  register: deployment_result
+  until: deployment_result is success
+  retries: 3
+  delay: 10
+  notify: verify localai
+
+# Model Management
+- name: Download default models if specified
+  ansible.builtin.include_tasks: download_models.yml
+  when: local_ai_download_models | default(false)
+  tags: [models, download]
+
+# Service Verification
+- name: Verify LocalAI API is responsive
+  ansible.builtin.uri:
+    url: "http://localhost:{{ local_ai_port }}/v1/models"
+    method: GET
+    status_code: 200
+    timeout: 30
+  register: api_check
+  until: api_check.status == 200
+  retries: 10
+  delay: 10
+  changed_when: false
+  notify: verify localai
+
+# Monitoring and Logging
+- name: Configure log rotation for LocalAI
+  ansible.builtin.template:
+    src: localai-logrotate.j2
+    dest: /etc/logrotate.d/localai
+    mode: '0644'
+  when: local_ai_configure_logrotate | default(true)
+
+- name: Deploy Prometheus monitoring configuration
+  ansible.builtin.template:
+    src: prometheus-localai.yml.j2
+    dest: "{{ prometheus_config_dir }}/localai.yml"
+    mode: '0644'
+  when: local_ai_enable_prometheus | default(true)
+  notify: restart prometheus
+
+# Systemd Service
+- name: Deploy systemd service file
+  ansible.builtin.template:
+    src: local-ai.service.j2
+    dest: /etc/systemd/system/local-ai.service
+    mode: '0644'
+  notify:
+    - daemon-reload
+    - enable localai
+    - restart localai

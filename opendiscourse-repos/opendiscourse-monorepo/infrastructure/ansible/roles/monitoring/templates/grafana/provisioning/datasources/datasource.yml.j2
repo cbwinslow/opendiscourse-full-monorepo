@@ -1,0 +1,60 @@
+apiVersion: 1
+
+datasources:
+  # Prometheus
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: "POST"
+
+  # Loki
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000
+
+  # Opensearch
+  - name: Opensearch
+    type: elasticsearch
+    access: proxy
+    url: http://opensearch:9200
+    database: "[audit-]YYYY.MM.DD"
+    jsonData:
+      interval: "Daily"
+      timeField: "@timestamp"
+      esVersion: 70
+      logMessageField: "message"
+      logLevelField: "level"
+      maxConcurrentShardRequests: 5
+
+  # Jaeger
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    jsonData:
+      nodeGraph:
+        enabled: true
+
+  # Tempo
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      httpMethod: "POST"
+      tracesToLogs:
+        datasourceUid: "loki"
+        tags: ['service.name', 'job']
+        mapTagNamesEnabled: false
+      serviceMap:
+        datasourceUid: "prometheus"
+      nodeGraph:
+        enabled: true

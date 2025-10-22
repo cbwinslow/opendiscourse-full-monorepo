@@ -1,0 +1,120 @@
+# ======================================
+# RabbitMQ Configuration
+# Managed by Ansible - Do not edit manually
+# Generated: {{ ansible_date_time.iso8601 }}
+# ======================================
+
+# Network Configuration
+listeners.tcp.default = {{ rabbitmq_tcp_port | default(5672) }}
+
+# SSL Configuration
+{% if rabbitmq_ssl_enabled | default(false) %}
+listeners.ssl.default = {{ rabbitmq_ssl_port | default(5671) }}
+ssl_options.cacertfile = {{ rabbitmq_ssl_ca_cert }}
+ssl_options.certfile = {{ rabbitmq_ssl_cert }}
+ssl_options.keyfile = {{ rabbitmq_ssl_key }}
+ssl_options.verify = verify_peer
+ssl_options.fail_if_no_peer_cert = true
+{% endif %}
+
+# Management Plugin
+management.tcp.port = {{ rabbitmq_management_port | default(15672) }}
+management.tcp.ip = {{ rabbitmq_management_bind_ip | default('0.0.0.0') }}
+management.load_definitions = /etc/rabbitmq/definitions.json
+
+# Cluster Configuration
+{% if rabbitmq_cluster_nodes is defined and rabbitmq_cluster_nodes | length > 0 %}
+cluster_formation.peer_discovery_backend = rabbit_peer_discovery_classic_config
+cluster_formation.classic_config.nodes.1 = {{ ansible_hostname }}
+{% for node in rabbitmq_cluster_nodes %}
+cluster_formation.classic_config.nodes.{{ loop.index + 1 }} = {{ node }}
+{% endfor %}
+{% endif %}
+
+# Memory and Disk Usage
+vm_memory_high_watermark.relative = {{ rabbitmq_memory_high_watermark | default(0.4) }}
+disk_free_limit.absolute = {{ rabbitmq_disk_free_limit | default('2GB') }}
+
+# Message Persistence
+queue_index_embed_msgs_below = {{ rabbitmq_queue_index_embed_msgs_below | default(4096) }}
+queue_master_locator = {{ rabbitmq_queue_master_locator | default('min-masters') }}
+
+# Connection and Channel Limits
+max_connections = {{ rabbitmq_max_connections | default(1000) }}
+max_channels_per_connection = {{ rabbitmq_max_channels | default(128) }}
+channel_max = {{ rabbitmq_channel_max | default(2047) }}
+
+# Heartbeats
+heartbeat = {{ rabbitmq_heartbeat | default(60) }}
+
+# Logging
+log.console = {{ rabbitmq_log_console | default('true') }}
+log.file = {{ rabbitmq_log_file | default('/var/log/rabbitmq/rabbit.log') }}
+log.file.level = {{ rabbitmq_log_level | default('info') }}
+
+# Default User and VHost
+default_user = {{ rabbitmq_default_user | default('guest') }}
+default_pass = {{ rabbitmq_default_pass | default('guest') }}
+default_vhost = {{ rabbitmq_default_vhost | default('/') }}
+default_permissions.configure = .*
+default_permissions.read = .*
+default_permissions.write = .*
+
+# Security
+loopback_users.guest = {{ 'true' if rabbitmq_allow_guest | default(false) else 'false' }}
+hipe_compile = {{ 'true' if rabbitmq_hipe_compile | default(false) else 'false' }}
+
+# Performance Tuning
+vm_memory_high_watermark_paging_ratio = {{ rabbitmq_memory_high_watermark_paging_ratio | default(0.5) }}
+total_memory_available_override_value = {{ rabbitmq_total_memory_available | default('4GB') }}
+
+# Queue Master Location
+queue_master_locator = {{ rabbitmq_queue_master_locator | default('min-masters') }}
+
+# Message TTL
+message_timestamp = {{ 'true' if rabbitmq_message_timestamp | default(true) else 'false' }}
+
+# Queue Defaults
+queue_index_embed_msgs_below = {{ rabbitmq_queue_index_embed_msgs_below | default(4096) }}
+queue_index_max_journal_entries = {{ rabbitmq_queue_index_max_journal_entries | default(65536) }}
+
+# Cluster Settings
+cluster_keepalive_interval = {{ rabbitmq_cluster_keepalive_interval | default(10000) }}
+cluster_partition_handling = {{ rabbitmq_cluster_partition_handling | default('ignore') }}
+
+# LDAP Configuration (if enabled)
+{% if rabbitmq_ldap_enabled | default(false) %}
+auth_backends.1 = rabbit_auth_backend_ldap
+auth_backends.2 = internal
+
+# LDAP Server Configuration
+auth_ldap.servers.1 = {{ rabbitmq_ldap_server }}
+auth_ldap.port = {{ rabbitmq_ldap_port | default(389) }}
+auth_ldap.user_dn_pattern = {{ rabbitmq_ldap_user_dn_pattern }}
+
+# LDAP TLS Configuration
+{% if rabbitmq_ldap_use_ssl | default(false) %}
+auth_ldap.use_ssl = true
+auth_ldap.ssl_options.cacertfile = {{ rabbitmq_ldap_ca_cert }}
+{% endif %}
+
+# LDAP Search Configuration
+auth_ldap.vhost_access_query = {{ rabbitmq_ldap_vhost_access_query | default('{username}' ) }}
+auth_ldap.resource_access_query = {{ rabbitmq_ldap_resource_access_query | default('{username}' ) }}
+{% endif %}
+
+# Prometheus Metrics (if enabled)
+{% if rabbitmq_prometheus_enabled | default(true) %}
+prometheus.return_per_object_metrics = true
+prometheus.path = /metrics
+prometheus.tcp.port = {{ rabbitmq_prometheus_port | default(15692) }}
+prometheus.tcp.ip = {{ rabbitmq_prometheus_bind_ip | default('0.0.0.0') }}
+{% endif %}
+
+# Additional Custom Configuration
+{% if rabbitmq_custom_config is defined %}
+# Custom Configuration
+{% for key, value in rabbitmq_custom_config.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+{% endif %}

@@ -1,0 +1,111 @@
+input {
+  # Filebeat input for logs
+  beats {
+    port => 5044
+  }
+  
+  # Prometheus metrics input
+  http_poller {
+    urls => {
+      prometheus => {
+        method => get
+        url => "http://prometheus:9090/api/v1/query?query=up"
+        headers => {
+          Accept => "application/json"
+        }
+      }
+    }
+    request_timeout => 60
+    schedule => { every => "10s" }
+    codec => "json"
+  }
+}
+
+filter {
+  # Parse JSON logs
+  if [log][file][path] =~ "json" {
+    json {
+      source => "message"
+      target => "json_content"
+      remove_field => ["message"]
+    }
+  }
+  
+  # Parse Docker logs
+  if [container][name] {
+    grok {
+      match => { "message" => "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:log_level} %{GREEDYDATA:log_message}" }
+    }
+  }
+  
+  # Add OpenSearch index based on log type
+  if [log][file][path] =~ "error" {
+    mutate {
+      add_field => { "[@metadata][index]" => "error-logs-%{+YYYY.MM.dd}" }
+    }
+  } else if [log][file][path] =~ "access" {
+    mutate {
+      add_field => { "[@metadata][index]" => "access-logs-%{+YYYY.MM.dd}" }
+    }
+  } else {
+    mutate {
+      add_field => { "[@metadata][index]" => "logs-%{+YYYY.MM.dd}" }
+    }
+  }
+  
+  # Add vector embeddings for semantic search
+  if [message] {
+    # This would be replaced with actual embedding generation
+    # For example, using a custom filter or external service
+    mutate {
+      add_field => { "[vector_embedding]" => [] }
+    }
+  }
+}
+
+output {
+  # Send to OpenSearch
+  opensearch {
+    hosts => ["http://opensearch:9200"]
+    index => "%{[@metadata][index]}"
+    document_id => "%{[@metadata][_id]}"
+    user => "${OPENSEARCH_USER}"
+    password => "${OPENSEARCH_PASSWORD}"
+    ssl => false
+  }
+  
+  # Also send to Qdrant for vector search
+  http {
+    http_method => "post"
+    url => "http://qdrant:6333/collections/logs/points?wait=true"
+    format => "json"
+    headers => {
+      "Content-Type" => "application/json"
+    }
+    mapping => {
+      "points" => [
+        {
+          "id" => "%{[@metadata][_id]}",
+          "vector" => "%{vector_embedding}",
+          "payload" => {
+            "message" => "%{message}",
+            "timestamp" => "%{@timestamp}",
+            "source" => "%{host}"
+          }
+        }
+      ]
+    }
+  }
+  
+  # Also store in PostgreSQL with pgvector
+  jdbc {
+    connection_string => "jdbc:postgresql://pgvector:5432/${POSTGRES_DB}"
+    username => "${POSTGRES_USER}"
+    password => "${POSTGRES_PASSWORD}"
+    statement => ["INSERT INTO logs (id, timestamp, message, vector_embedding) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET timestamp = EXCLUDED.timestamp, message = EXCLUDED.message, vector_embedding = EXCLUDED.vector_embedding",
+                 "%{[@metadata][_id]}",
+                 "%{@timestamp}",
+                 "%{message}",
+                 "%{vector_embedding}"]
+  }
+}

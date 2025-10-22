@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Legislation</h1>
+        <p class="lead">Browse and search bills and legislation from all levels of government.</p>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <form id="filter-form">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="search-input" placeholder="Search bills...">
+                        <button class="btn btn-outline-secondary" type="button" id="search-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <div class="d-flex justify-content-end">
+                    <select class="form-select w-auto me-2" id="jurisdiction-select">
+                        <option value="">All Jurisdictions</option>
+                        <option value="federal">Federal</option>
+                        <option value="state:ca">California</option>
+                        <option value="state:ny">New York</option>
+                    </select>
+                    <select class="form-select w-auto" id="sort-select">
+                        <option value="created_at">Sort by Date</option>
+                        <option value="title">Sort by Title</option>
+                        <option value="identifier">Sort by Identifier</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div id="bills-list">
+            <!-- Bills will be loaded here -->
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading bills...</p>
+            </div>
+        </div>
+        
+        <nav aria-label="Bills pagination">
+            <ul class="pagination justify-content-center" id="pagination">
+                <!-- Pagination will be loaded here -->
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    let currentSearch = '';
+    let currentJurisdiction = '';
+    let currentSort = 'created_at';
+    
+    // Load bills when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadBills();
+    });
+    
+    // Search functionality
+    document.getElementById('search-btn').addEventListener('click', function() {
+        currentSearch = document.getElementById('search-input').value;
+        currentPage = 1;
+        loadBills();
+    });
+    
+    // Jurisdiction filter
+    document.getElementById('jurisdiction-select').addEventListener('change', function() {
+        currentJurisdiction = this.value;
+        currentPage = 1;
+        loadBills();
+    });
+    
+    // Sort functionality
+    document.getElementById('sort-select').addEventListener('change', function() {
+        currentSort = this.value;
+        currentPage = 1;
+        loadBills();
+    });
+    
+    function loadBills() {
+        // Show loading state
+        document.getElementById('bills-list').innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading bills...</p>
+            </div>
+        `;
+        
+        // Build query parameters
+        const params = new URLSearchParams();
+        params.append('page', currentPage);
+        params.append('per_page', 20);
+        params.append('sort', currentSort);
+        
+        if (currentSearch) {
+            params.append('search', currentSearch);
+        }
+        
+        if (currentJurisdiction) {
+            params.append('jurisdiction', currentJurisdiction);
+        }
+        
+        // Fetch bills
+        fetch(`/api/bills?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                displayBills(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('bills-list').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Error loading bills. Please try again.
+                    </div>
+                `;
+            });
+    }
+    
+    function displayBills(data) {
+        let html = '';
+        
+        if (data.bills && data.bills.length > 0) {
+            html += `
+                <div class="list-group">
+            `;
+            
+            data.bills.forEach(bill => {
+                html += `
+                    <a href="/bill/${bill.id}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">${bill.identifier}</h5>
+                            <small>${bill.created_at}</small>
+                        </div>
+                        <p class="mb-1">${bill.title}</p>
+                        <small class="text-muted">
+                            ${bill.jurisdiction_id ? `Jurisdiction: ${bill.jurisdiction_id.split('/').pop()}` : ''}
+                        </small>
+                    </a>
+                `;
+            });
+            
+            html += '</div>';
+        } else {
+            html = `
+                <div class="text-center py-5">
+                    <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                    <h3>No bills found</h3>
+                    <p class="text-muted">Try adjusting your search criteria.</p>
+                </div>
+            `;
+        }
+        
+        document.getElementById('bills-list').innerHTML = html;
+        
+        // Update pagination
+        updatePagination(data.pagination);
+    }
+    
+    function updatePagination(pagination) {
+        let html = '';
+        
+        if (pagination.pages > 1) {
+            // Previous button
+            html += `
+                <li class="page-item ${pagination.page === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" data-page="${pagination.page - 1}">Previous</a>
+                </li>
+            `;
+            
+            // Page numbers
+            for (let i = 1; i <= pagination.pages; i++) {
+                if (i === 1 || i === pagination.pages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+                    html += `
+                        <li class="page-item ${i === pagination.page ? 'active' : ''}">
+                            <a class="page-link" href="#" data-page="${i}">${i}</a>
+                        </li>
+                    `;
+                } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+            
+            // Next button
+            html += `
+                <li class="page-item ${pagination.page === pagination.pages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" data-page="${pagination.page + 1}">Next</a>
+                </li>
+            `;
+        }
+        
+        document.getElementById('pagination').innerHTML = html;
+        
+        // Add event listeners to pagination links
+        document.querySelectorAll('#pagination .page-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = parseInt(this.getAttribute('data-page'));
+                if (!isNaN(page)) {
+                    currentPage = page;
+                    loadBills();
+                }
+            });
+        });
+    }
+</script>
+{% endblock %}

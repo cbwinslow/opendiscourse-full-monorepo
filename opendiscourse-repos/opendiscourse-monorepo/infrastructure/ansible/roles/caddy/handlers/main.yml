@@ -1,0 +1,34 @@
+---
+# Handlers for Caddy role
+
+- name: restart caddy
+  ansible.builtin.service:
+    name: caddy
+    state: restarted
+  when: ansible_service_mgr != 'systemd' or caddy_service.restart_on_change | default(true)
+
+- name: reload caddy
+  ansible.builtin.service:
+    name: caddy
+    state: reloaded
+  when: ansible_service_mgr != 'systemd' or caddy_service.restart_on_change | default(true)
+
+- name: daemon-reload
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  when: ansible_service_mgr == 'systemd'
+
+- name: check caddy config
+  ansible.builtin.command: caddy validate --config /etc/caddy/Caddyfile
+  register: caddy_validate
+  changed_when: false
+  check_mode: no
+  ignore_errors: true
+
+- name: test caddy config
+  ansible.builtin.command: caddy validate --config /etc/caddy/Caddyfile
+  changed_when: false
+  check_mode: no
+  register: caddy_test
+  failed_when: caddy_test.rc != 0
+  notify: restart caddy

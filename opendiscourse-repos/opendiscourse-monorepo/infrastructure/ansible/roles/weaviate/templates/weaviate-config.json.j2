@@ -1,0 +1,48 @@
+{
+  "authentication": {
+    "anonymous_access": {
+      "enabled": {{ weaviate_authentication_anonymous_access_enabled | lower }}
+    }
+  },
+  "defaults": {
+    "vectorizer": "{{ weaviate_default_vectorizer }}",
+    "vectorizerModule": "{{ weaviate_default_vectorizer_module }}"
+  },
+  "environment": "{{ agentic_rag_environment }}",
+  "persistence": {
+    "data_path": "{{ weaviate_persistence_data_path }}"
+  },
+  "services": {
+    "db": {
+      "enabled": true,
+      "options": {
+        "persistent_data": true
+      }
+    },
+    "tls": {
+      "enabled": false
+    }
+  },
+  "http": {
+    "host": "0.0.0.0",
+    "port": {{ weaviate_http_port }}
+  },
+  "grpc": {
+    "port": {{ weaviate_grpc_port }}
+  },
+  "modules": {
+    "enabled": "{{ weaviate_enable_modules }}",
+    "storage": {
+      "filesystem": {
+        "root_path": "{{ weaviate_data_dir }}"
+      }
+    }
+  },
+  "cluster": {
+    "hostname": "{{ weaviate_cluster_hostname }}",
+    "join": "{{ weaviate_cluster_join }}",
+    "init": {
+      "enabled": {{ weaviate_cluster_init | lower }}
+    }
+  }
+}

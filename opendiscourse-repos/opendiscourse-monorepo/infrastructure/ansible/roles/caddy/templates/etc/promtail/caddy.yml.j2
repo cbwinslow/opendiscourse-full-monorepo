@@ -1,0 +1,41 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: {{ caddy_monitoring.loki.log_level | default('info') }}
+
+positions:
+  filename: /tmp/positions_caddy.yml
+  sync_period: 10s
+
+clients:
+  - url: {{ caddy_monitoring.loki.url | default('http://localhost:3100/loki/api/v1/push') }}
+    batchwait: {{ caddy_monitoring.loki.batch_wait | default('1s') }}
+    batchsize: {{ caddy_monitoring.loki.batch_size | default(1048576) }}
+    timeout: 10s
+
+scrape_configs:
+  - job_name: caddy
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: caddy
+          __path__: {{ caddy_log_dir | default('/var/log/caddy') }}/*.log
+          host: {{ inventory_hostname }}
+          environment: {{ env | default('production') }}
+    pipeline_stages:
+      - docker: {}
+      - regex:
+          expression: '^(?P<timestamp>\S+) \[(?P<level>\w+)\]\s+(?P<message>.*)$'
+      - labels:
+          level:
+      - output:
+          source: message
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+
+    relabel_configs:
+      - source_labels: ['__path__']
+        target_label: '__path__'
+      - source_labels: ['__name__']
+        target_label: '__name__'

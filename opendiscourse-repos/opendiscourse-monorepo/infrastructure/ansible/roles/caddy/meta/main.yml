@@ -1,0 +1,33 @@
+---
+dependencies:
+  - { role: common, tags: ['common'] }
+  - { role: security, tags: ['security'] }
+  - { role: monitoring, tags: ['monitoring'] }
+
+galaxy_info:
+  author: "OpenDiscourse Team"
+  description: "Caddy web server role with automatic HTTPS"
+  company: "Open Source"
+  license: "MIT"
+  min_ansible_version: 2.9
+  platforms:
+    - name: Debian
+      versions:
+        - buster
+        - bullseye
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - bionic
+        - focal
+        - jammy
+  galaxy_tags:
+    - web
+    - http
+    - https
+    - reverse_proxy
+    - caddy
+    - security
+    - ssl
+    - tls
+    - letsencrypt

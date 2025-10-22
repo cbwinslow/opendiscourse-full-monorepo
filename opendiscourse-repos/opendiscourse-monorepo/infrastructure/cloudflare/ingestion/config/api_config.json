@@ -1,0 +1,77 @@
+{
+  "govinfo": {
+    "apiBaseUrl": "https://api.govinfo.gov",
+    "apiKey": "JRiK258tD1yRUWSnaeI2vUchbbjzyaZGoQT7LWfG",
+    "bulkDataUrl": "https://www.govinfo.gov/bulkdata",
+    "collections": [
+      "BILLS",
+      "CRPT",
+      "CREC",
+      "FR",
+      "GAO",
+      "GOVMAN",
+      "HMAN",
+      "HOMELAND_SECURITY",
+      "ERIC",
+      "BUDGET",
+      "CPD",
+      "CPRT",
+      "CHRG",
+      "CQ",
+      "CQAL",
+      "LSA",
+      "PLAW",
+      "STATUTE",
+      "USCODE",
+      "USCOURTS"
+    ]
+  },
+  "congress": {
+    "apiBaseUrl": "https://api.congress.gov/v3",
+    "apiKey": "nt7MSte5iCSAphsEVqv10WdjdNU0a7QHCfEagcFj"
+  },
+  "cloudflare": {
+    "accountId": "968ff4ee9f5e59bc6c72758269d6b9d6",
+    "vectorizeIndex": "opendiscourse-vector-index",
+    "r2Bucket": "opendiscourse-documents",
+    "d1Database": "opendiscourse-db"
+  },
+  "ingestion": {
+    "chunkSize": 2000,
+    "batchSize": 100,
+    "maxRetries": 2,
+    "retryDelay": 500,
+    "concurrentDownloads": 15,
+    "useStreaming": true,
+    "memoryCacheSize": 52428800,
+    "timeout": 30000,
+    "rateLimit": {
+      "maxRequests": 100,
+      "perMilliseconds": 60000,
+      "maxRPS": 30
+    }
+  },
+  "parsers": {
+    "pdf": {
+      "maxPages": 1000,
+      "extractImages": false
+    },
+    "xml": {
+      "preserveFormatting": true
+    },
+    "html": {
+      "extractTextOnly": true
+    }
+  },
+  "autorag": {
+    "embeddingModel": "@cf/baai/bge-large-en-v1.5",
+    "embeddingDimension": 1024,
+    "vectorSimilarityThreshold": 0.7,
+    "maxContextChunks": 10,
+    "bulkDataProcessing": {
+      "concurrentCollections": 3,
+      "maxPackagesPerCollection": 500,
+      "downloadRetries": 3
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron bg-primary text-white p-5 rounded">
+    <div class="container">
+        <h1 class="display-4">Government Transparency Platform</h1>
+        <p class="lead">Track voting records, public statements, and identify discrepancies of government officials.</p>
+        <hr class="my-4">
+        <p>OpenDiscourse analyzes data from multiple government sources to promote transparency and accountability.</p>
+        <a class="btn btn-light btn-lg" href="{{ url_for('main.search') }}" role="button">Search Members & Bills</a>
+        <a class="btn btn-outline-light btn-lg" href="{{ url_for('main.discrepancies') }}" role="button">View Discrepancies</a>
+    </div>
+</div>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Member Profiles</h5>
+                    <p class="card-text">Detailed profiles of government officials with voting records and public statements.</p>
+                    <a href="{{ url_for('main.members') }}" class="btn btn-primary">Browse Members</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-alt fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Legislation Tracking</h5>
+                    <p class="card-text">Comprehensive database of bills and legislative actions across all levels of government.</p>
+                    <a href="{{ url_for('main.bills') }}" class="btn btn-primary">Browse Bills</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Discrepancy Detection</h5>
+                    <p class="card-text">Identify inconsistencies between voting behavior and public statements.</p>
+                    <a href="{{ url_for('main.discrepancies') }}" class="btn btn-warning">View Discrepancies</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-5">
+    <h2>Platform Statistics</h2>
+    <div class="row" id="statistics">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="card-title" id="total-members">--</h3>
+                    <p class="card-text">Government Members</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="card-title" id="total-bills">--</h3>
+                    <p class="card-text">Bills Tracked</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="card-title" id="total-votes">--</h3>
+                    <p class="card-text">Votes Recorded</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="card-title" id="total-discrepancies">--</h3>
+                    <p class="card-text">Discrepancies Found</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Fetch statistics
+    fetch('/api/statistics')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-members').textContent = data.total_members.toLocaleString();
+            document.getElementById('total-bills').textContent = data.total_bills.toLocaleString();
+            document.getElementById('total-votes').textContent = data.total_votes.toLocaleString();
+            document.getElementById('total-discrepancies').textContent = data.total_discrepancies.toLocaleString();
+        })
+        .catch(error => console.error('Error fetching statistics:', error));
+</script>
+{% endblock %}

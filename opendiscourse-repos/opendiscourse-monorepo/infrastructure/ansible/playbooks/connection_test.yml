@@ -1,0 +1,14 @@
+---
+- name: Test Connection and Gather Facts
+  hosts: test_server
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Display OS information
+      debug:
+        msg: "Running on {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+    - name: Test connection to localhost
+      ping:
+      connection: local

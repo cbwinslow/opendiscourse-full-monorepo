@@ -1,0 +1,13 @@
+---
+- name: restart agentic-rag
+  systemd:
+    name: agentic-rag
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+  when: ansible_service_mgr == 'systemd'
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  when: ansible_service_mgr == 'systemd'

@@ -1,0 +1,21 @@
+[Unit]
+Description=Neo4j Graph Database
+After=network.target
+
+[Service]
+Type=forking
+User={{ neo4j_user }}
+Group={{ neo4j_group }}
+LimitNOFILE=60000
+LimitNPROC=60000
+PIDFile={{ neo4j_base_dir }/run/neo4j.pid
+ExecStart={{ neo4j_base_dir }}/bin/neo4j start
+ExecReload={{ neo4j_base_dir }}/bin/neo4j restart
+ExecStop={{ neo4j_base_dir }}/bin/neo4j stop
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+[Install]
+WantedBy=multi-user.target

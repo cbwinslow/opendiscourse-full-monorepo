@@ -1,0 +1,25 @@
+# Caddy metrics configuration for Prometheus
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+scrape_configs:
+  - job_name: 'caddy'
+    scrape_interval: {{ caddy_monitoring.metrics_interval | default('15s') }}
+    scrape_timeout: {{ caddy_monitoring.metrics_timeout | default('10s') }}
+    metrics_path: '{{ caddy_monitoring.metrics_path | default("/metrics") }}'
+    scheme: 'http'
+    
+    static_configs:
+      - targets: 
+          - '{{ caddy_monitoring.metrics_host | default("localhost") }}:{{ caddy_monitoring.metrics_port | default(2019) }}'
+        labels:
+          instance: '{{ inventory_hostname }}'
+          job: 'caddy'
+          env: '{{ env | default("production") }}'
+    
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: '{{ caddy_monitoring.metrics_host | default("localhost") }}:{{ caddy_monitoring.metrics_port | default(2019) }}'

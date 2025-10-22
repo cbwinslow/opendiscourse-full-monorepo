@@ -1,0 +1,77 @@
+[Unit]
+Description=LocalAI - Self-hosted, community-driven OpenAI drop-in replacement
+Documentation=https://localai.io
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User={{ local_ai_user }}
+Group={{ local_ai_group }}
+WorkingDirectory={{ local_ai_base_dir }}
+
+# Environment variables from role defaults
+Environment="LOCALAI_BASE_DIR={{ local_ai_base_dir }}"
+Environment="LOCALAI_MODELS_DIR={{ local_ai_models_dir }}"
+Environment="LOCALAI_CONFIG_DIR={{ local_ai_config_dir }}"
+Environment="LOCALAI_DATA_DIR={{ local_ai_data_dir }}"
+Environment="LOCALAI_LOGS_DIR={{ local_ai_logs_dir }}"
+Environment="LOCALAI_PORT={{ local_ai_port }}"
+Environment="LOCALAI_HOST={{ local_ai_host }}"
+Environment="LOCALAI_DEBUG={{ local_ai_debug | lower }}"
+Environment="LOCALAI_LOG_LEVEL={{ local_ai_log_level }}"
+
+# Docker Compose command
+ExecStart=/usr/bin/docker-compose -f {{ local_ai_base_dir }}/docker-compose.yml up --remove-orphans
+ExecStop=/usr/bin/docker-compose -f {{ local_ai_base_dir }}/docker-compose.yml down
+ExecReload=/usr/bin/docker-compose -f {{ local_ai_base_dir }}/docker-compose.yml restart
+
+# Security and resource limits
+LimitNOFILE={{ local_ai_systemd_limit_nofile }}
+LimitNPROC={{ local_ai_systemd_limit_nproc }}
+LimitMEMLOCK=infinity
+TimeoutStartSec=300
+TimeoutStopSec=60
+Restart={{ local_ai_systemd_restart }}
+RestartSec={{ local_ai_systemd_restart_sec }}
+StartLimitBurst=3
+StartLimitInterval=60s
+
+# Logging configuration
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=localai
+
+# Sandboxing and security
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=true
+RestrictRealtime=true
+MemoryDenyWriteExecute=true
+LockPersonality=true
+
+# Capabilities
+CapabilityBoundingSet=
+DevicePolicy=closed
+DeviceAllow=
+IPAddressDeny=any
+KeyringMode=private
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+SystemCallFilter=@system-service @resources @privileged
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

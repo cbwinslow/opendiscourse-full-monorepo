@@ -1,0 +1,12 @@
+{
+  "name": "opendiscourse-cloudflare",
+  "description": "OpenDiscourse infrastructure on Cloudflare",
+  "main": "index.ts",
+  "devDependencies": {
+    "@types/node": "^18"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.0.0",
+    "@pulumi/cloudflare": "^5.0.0"
+  }
+}

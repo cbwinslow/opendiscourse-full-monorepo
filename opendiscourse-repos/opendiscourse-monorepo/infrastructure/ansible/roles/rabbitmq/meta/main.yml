@@ -1,0 +1,83 @@
+---
+galaxy_info:
+  author: Windsurf Project
+  description: Install and configure RabbitMQ message broker
+  company: Windsurf
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - bionic
+        - focal
+        - jammy
+    - name: Debian
+      versions:
+        - buster
+        - bullseye
+  galaxy_tags:
+    - messaging
+    - rabbitmq
+    - queue
+    - amqp
+    - broker
+    - monitoring
+    - performance
+
+dependencies:
+  - role: common
+  - role: monitoring
+    when: rabbitmq_prometheus_enabled | default(true) | bool
+  - role: security
+    when: rabbitmq_ssl_enabled | default(false) | bool
+
+# Role metadata
+allow_duplicates: false
+# Required for Ansible 2.9+
+galaxy_tags: []
+
+# Role variables documentation
+documentation: |
+  # RabbitMQ Role
+  
+  This role installs and configures RabbitMQ message broker with support for:
+  - Multiple vhosts and users
+  - SSL/TLS encryption
+  - Clustering
+  - Monitoring via Prometheus
+  - LDAP authentication
+  - Resource limits and performance tuning
+  
+  ## Requirements
+  
+  - Ansible 2.9+
+  - Debian/Ubuntu
+  - Root privileges
+  
+  ## Role Variables
+  
+  See `defaults/main.yml` for all available variables.
+  
+  ## Example Playbook
+  
+  ```yaml
+  - hosts: rabbitmq_servers
+    roles:
+      - role: rabbitmq
+        rabbitmq_users:
+          - user: admin
+            password: "{{ vault_rabbitmq_admin_password }}"
+            vhost: /
+            configure_priv: .*
+            write_priv: .*
+            read_priv: .*
+            tags: administrator
+        rabbitmq_ssl_enabled: true
+        rabbitmq_ssl_ca_cert: /etc/ssl/certs/ca-cert.pem
+        rabbitmq_ssl_cert: /etc/ssl/certs/rabbitmq.pem
+        rabbitmq_ssl_key: /etc/ssl/private/rabbitmq-key.pem
+  ```
+  
+  ## License
+  
+  MIT

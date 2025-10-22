@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>API Documentation</h1>
+        <p class="lead">Access government data programmatically through our REST API.</p>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3>Getting Started</h3>
+                <p>The OpenDiscourse API provides access to government data including member profiles, bills, votes, and discrepancies. All endpoints return JSON data and are accessible via standard HTTP requests.</p>
+                
+                <h5>Base URL</h5>
+                <pre><code>https://opendiscourse.example.com/api</code></pre>
+                
+                <h5>Authentication</h5>
+                <p>Most endpoints do not require authentication. Rate limiting may apply to prevent abuse.</p>
+                
+                <h5>Rate Limiting</h5>
+                <p>API requests are limited to 1000 requests per hour per IP address. Exceeding this limit will result in a 429 (Too Many Requests) response.</p>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3>Endpoints</h3>
+                
+                <h5>Members</h5>
+                <p>Retrieve information about government members.</p>
+                <pre><code>GET /api/members
+GET /api/members/{person_id}</code></pre>
+                
+                <h5>Bills</h5>
+                <p>Retrieve information about legislation.</p>
+                <pre><code>GET /api/bills
+GET /api/bills/{bill_id}</code></pre>
+                
+                <h5>Discrepancies</h5>
+                <p>Retrieve identified discrepancies between voting records and public statements.</p>
+                <pre><code>GET /api/discrepancies</code></pre>
+                
+                <h5>Search</h5>
+                <p>Search across all data types.</p>
+                <pre><code>GET /api/search?q={query}&type={type}</code></pre>
+                
+                <h5>Statistics</h5>
+                <p>Retrieve platform statistics.</p>
+                <pre><code>GET /api/statistics</code></pre>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <h3>Example Usage</h3>
+                <p>Retrieve a list of government members:</p>
+                <pre><code>curl -X GET "https://opendiscourse.example.com/api/members?page=1&per_page=20"</code></pre>
+                
+                <p>Search for bills related to healthcare:</p>
+                <pre><code>curl -X GET "https://opendiscourse.example.com/api/search?q=healthcare&type=bills"</code></pre>
+                
+                <p>Get platform statistics:</p>
+                <pre><code>curl -X GET "https://opendiscourse.example.com/api/statistics"</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

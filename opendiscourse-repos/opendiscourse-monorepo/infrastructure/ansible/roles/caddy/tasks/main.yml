@@ -1,0 +1,30 @@
+---
+# Main tasks file for Caddy role
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+  ignore_errors: true
+
+- name: Ensure Caddy is installed
+  ansible.builtin.include_tasks: install.yml
+  tags: [caddy, install]
+
+- name: Configure Caddy
+  ansible.builtin.include_tasks: config.yml
+  tags: [caddy, config]
+
+- name: Setup SSL certificates
+  ansible.builtin.include_tasks: ssl.yml
+  when: caddy_ssl is defined and caddy_ssl.enabled | default(true)
+  tags: [caddy, ssl]
+
+- name: Configure security settings
+  ansible.builtin.include_tasks: security.yml
+  tags: [caddy, security]
+
+- name: Setup monitoring and logging
+  ansible.builtin.include_tasks: monitoring.yml
+  tags: [caddy, monitoring]
+
+- name: Ensure Caddy service is running
+  ansible.builtin.include_tasks: service.yml
+  tags: [caddy, service]

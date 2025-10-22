@@ -1,0 +1,125 @@
+# Test Inventory
+# Ansible managed - do not edit manually
+
+# ====================
+# Server Groups
+# ====================
+
+# Primary infrastructure servers
+[infra_servers]
+# Add test server here if available, e.g., test_server ansible_host=192.168.1.100 ansible_user=root
+test_server ansible_host=95.217.106.172 ansible_user=cbwinslow ansible_ssh_private_key_file=~/.ssh/hetzner_rsa ansible_become=true
+
+# AI/ML related services
+[ai_servers]
+# Add test server here if available, e.g., test_server gpu_profile=cpu
+[agentic_rag_test]
+test_server gpu_profile=cpu
+
+# Oracle Cloud instances (managed by Terraform)
+[oracle_servers]
+# Oracle Free Tier instances will be added by Terraform
+
+# Database servers
+[database_servers]
+# Add test server here if available, e.g., test_server
+
+# Monitoring and observability stack
+[monitoring_servers]
+# Add test server here if available, e.g., test_server
+
+# Reverse proxy and load balancers
+[proxy_servers]
+# Add test server here if available, e.g., test_server
+
+# ====================
+# Service Groups
+# ====================
+
+[local_ai:children]
+ai_servers
+
+[postgresql:children]
+database_servers
+
+[neo4j:children]
+database_servers
+
+[prometheus:children]
+monitoring_servers
+
+[grafana:children]
+monitoring_servers
+
+[loki:children]
+monitoring_servers
+
+[traefik:children]
+proxy_servers
+
+[nginx:children]
+proxy_servers
+
+[caddy:children]
+proxy_servers
+
+# ====================
+# Variable Groups
+# ====================
+
+[all:vars]
+# Python interpreter
+ansible_python_interpreter=/usr/bin/python3
+
+# Vault configuration
+vault_password_file=~/.vault_pass.txt
+
+# SSH settings
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+# Privilege escalation
+ansible_become=true
+ansible_become_method=sudo
+ansible_become_user=root
+
+# Performance tuning
+ansible_pipelining=true
+ansible_ssh_pipelining=true
+ansible_ssh_args='-o ControlMaster=auto -o ControlPersist=60s -o ServerAliveInterval=15'
+
+# Environment settings
+env=test
+timezone=UTC
+
+# Service ports
+prometheus_port=9090
+grafana_port=3000
+loki_port=3100
+postgres_port=5432
+neo4j_http_port=7474
+neo4j_bolt_port=7687
+
+# Deployment settings
+deployment_user=deploy
+deployment_group=deploy
+
+# LocalAI specific variables
+local_ai_base_dir=/opt/localai-test
+local_ai_user=localai-test
+local_ai_group=localai-test
+local_ai_port=8090
+local_ai_debug=true
+local_ai_log_level=debug
+
+# Disable GPU for testing
+local_ai_gpu_enabled=false
+
+# Test with a small model
+local_ai_models_to_download=gpt4all-j
+local_ai_models_to_download_url=https://gpt4all.io/models/ggml-gpt4all-j-v1.3-groovy.bin
+local_ai_models_to_download_filename=ggml
+
+# Integrations
+local_ai_integrations_grafana_enabled=false
+local_ai_integrations_loki_enabled=false

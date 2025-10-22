@@ -1,0 +1,98 @@
+---
+- name: Validate Security Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Check if SSH is running on configured port
+      ansible.builtin.wait_for:
+        port: "{{ security_hardening.ssh.port }}"
+        timeout: 5
+      register: ssh_check
+      ignore_errors: yes
+
+    - name: Verify SSH port configuration
+      ansible.builtin.assert:
+        that:
+          - ssh_check is defined
+          - ssh_check.state == 'started'
+        fail_msg: "SSH is not running on port {{ security_hardening.ssh.port }}"
+        success_msg: "SSH is running on port {{ security_hardening.ssh.port }}"
+
+    - name: Check UFW status
+      ansible.builtin.command: ufw status verbose
+      register: ufw_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Verify UFW is enabled
+      ansible.builtin.assert:
+        that: '"Status: active" in ufw_status.stdout'
+        fail_msg: "UFW is not active"
+        success_msg: "UFW is active"
+
+    - name: Check fail2ban status
+      ansible.builtin.systemd:
+        name: fail2ban
+        enabled: true
+      register: fail2ban_status
+      changed_when: false
+
+    - name: Verify fail2ban is enabled
+      ansible.builtin.assert:
+        that: fail2ban_status.enabled
+        fail_msg: "fail2ban is not enabled"
+        success_msg: "fail2ban is enabled"
+
+    - name: Check auditd status
+      ansible.builtin.systemd:
+        name: auditd
+        enabled: true
+      register: auditd_status
+      changed_when: false
+      when: auditd.enabled | bool
+
+    - name: Verify auditd is enabled
+      ansible.builtin.assert:
+        that: auditd_status.enabled
+        fail_msg: "auditd is not enabled"
+        success_msg: "auditd is enabled"
+      when: auditd.enabled | bool
+
+    - name: Check kernel parameters
+      ansible.builtin.shell: |
+        sysctl -a 2>/dev/null | grep -E '{{ item.key }}'
+      register: sysctl_check
+      loop: "{{ security_hardening.sysctl | dict2items }}"
+      changed_when: false
+      ignore_errors: yes
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Verify kernel parameters
+      ansible.builtin.assert:
+        that: 
+          - item.item.value | string in item.stdout
+        fail_msg: "Kernel parameter {{ item.item.key }} is not set to {{ item.item.value }}"
+        success_msg: "Kernel parameter {{ item.item.key }} is correctly set"
+      loop: "{{ sysctl_check.results }}"
+      when: item is not skipped
+
+    - name: Check for required security packages
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      register: package_check
+      loop: "{{ security_packages }}"
+      changed_when: false
+      ignore_errors: yes
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Verify security packages are installed
+      ansible.builtin.assert:
+        that: item is not failed
+        fail_msg: "Package {{ item.item }} is not installed"
+        success_msg: "Package {{ item.item }} is installed"
+      loop: "{{ package_check.results }}"

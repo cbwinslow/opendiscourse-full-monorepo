@@ -1,0 +1,7 @@
+---
+- name: Restore opendiscourse.net
+  hosts: all
+  become: true
+  tasks:
+    - name: Run restore script
+      script: /etc/ansible/roles/common/files/restore.sh

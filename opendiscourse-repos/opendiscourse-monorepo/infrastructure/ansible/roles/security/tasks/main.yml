@@ -1,0 +1,362 @@
+---
+# Security role for RAG Database Infrastructure
+
+- name: Install security packages
+  apt:
+    name: "{{ security_packages }}"
+    state: present
+    update_cache: yes
+  tags: [security, packages]
+
+- name: Configure system limits
+  template:
+    src: limits.conf.j2
+    dest: /etc/security/limits.conf
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [security, limits]
+
+- name: Configure kernel parameters
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_set: yes
+  loop: "{{ security_hardening.sysctl | dict2items }}"
+  tags: [security, sysctl]
+
+- name: Configure SSH hardening
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart sshd
+  tags: [security, ssh]
+
+- name: Configure firewall (UFW)
+  ufw:
+    rule: "{{ item.rule | default('allow') }}"
+    direction: "{{ item.direction | default('in') }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    port: "{{ item.port | default(omit) }}"
+    from_ip: "{{ item.from_ip | default('any') }}"
+    to_ip: "{{ item.to_ip | default('any') }}"
+    comment: "{{ item.comment | default('') }}"
+  with_items: "{{ security_hardening.firewall.allow_ports }}"
+  tags: [security, firewall]
+
+- name: Set default firewall policies
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  with_items:
+    - { direction: 'incoming', policy: '{{ security_hardening.firewall.default_policy }}' }
+    - { direction: 'outgoing', policy: '{{ security_hardening.firewall.default_outgoing_policy }}' }
+  tags: [security, firewall]
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+  tags: [security, firewall]
+
+- name: Ensure fail2ban is installed
+  apt:
+    name: fail2ban
+    state: present
+  tags: [security, fail2ban]
+
+- name: Configure fail2ban
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart fail2ban
+  when: fail2ban.enabled | bool
+  tags: [security, fail2ban]
+
+- name: Ensure fail2ban service state matches configuration
+  service:
+    name: fail2ban
+    state: "{{ 'started' if fail2ban.enabled | bool else 'stopped' }}"
+    enabled: "{{ fail2ban.enabled | bool }}"
+  tags: [security, fail2ban]
+
+- name: Configure automatic security updates
+  template:
+    src: 20auto-upgrades.j2
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+  when: security_updates.enabled | bool
+  tags: [security, updates]
+
+- name: Configure unattended-upgrades
+  template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+  when: security_updates.unattended_upgrades | bool
+  tags: [security, updates]
+
+- name: Configure auditd
+  template:
+    src: auditd.conf.j2
+    dest: /etc/audit/auditd.conf
+    owner: root
+    group: root
+    mode: '0640'
+  notify: restart auditd
+  when: auditd.enabled | bool
+  tags: [security, auditd]
+
+- name: Ensure auditd is enabled and running
+  service:
+    name: auditd
+    state: started
+    enabled: yes
+  when: auditd.enabled | bool
+  tags: [security, auditd]
+
+- name: Configure OSSEC
+  template:
+    src: ossec.conf.j2
+    dest: /var/ossec/etc/ossec.conf
+    mode: '0640'
+  notify: restart ossec
+
+- name: Configure Snort
+  template:
+    src: snort.conf.j2
+    dest: /etc/snort/snort.conf
+    mode: '0644'
+  notify: restart snort
+
+- name: Configure Suricata
+  template:
+    src: suricata.yaml.j2
+    dest: /etc/suricata/suricata.yaml
+    mode: '0644'
+  notify: restart suricata
+
+- name: Install and configure fail2ban
+  block:
+    - name: Install fail2ban
+      apt:
+        name: fail2ban
+        state: present
+
+    - name: Configure fail2ban
+      template:
+        src: jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        mode: '0644'
+
+    - name: Enable and start fail2ban
+      systemd:
+        name: fail2ban
+        enabled: yes
+        state: started
+
+- name: Configure UFW with custom rules
+  block:
+    - name: Allow Cloudflare IPs
+      ufw:
+        rule: allow
+        from_ip: "{{ item }}"
+        proto: tcp
+      loop:
+        - "103.21.244.0/22"
+        - "103.22.200.0/22"
+        - "103.31.4.0/22"
+        - "104.16.0.0/12"
+        - "108.162.192.0/18"
+        - "131.0.72.0/22"
+        - "141.101.64.0/18"
+        - "162.158.0.0/15"
+        - "172.64.0.0/13"
+        - "173.245.48.0/20"
+        - "188.114.96.0/20"
+        - "190.93.240.0/20"
+        - "197.234.240.0/22"
+        - "198.41.128.0/17"
+        - "2400:cb00::/32"
+        - "2606:4700::/32"
+        - "2803:f800::/32"
+        - "2405:b500::/32"
+        - "2405:8100::/32"
+
+    - name: Configure UFW logging
+      ufw:
+        log: yes
+        state: enabled
+
+    - name: Set UFW default policies
+      ufw:
+        policy: "{{ item }}"
+        direction: "{{ item }}"
+      loop:
+        - "deny incoming"
+        - "allow outgoing"
+
+- name: Configure SSH security
+  block:
+    - name: Update SSH configuration
+      template:
+        src: sshd_config.j2
+        dest: /etc/ssh/sshd_config
+        mode: '0644'
+      notify: restart ssh
+
+    - name: Disable root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+
+    - name: Change SSH port
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^Port'
+        line: 'Port {{ ssh_port }}'
+
+    - name: Allow only specific users
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^AllowUsers'
+        line: 'AllowUsers {{ ssh_allowed_users }}'
+
+- name: Configure SSL/TLS
+  block:
+    - name: Install SSL certificates
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "/etc/ssl/certs/{{ item }}"
+        mode: '0644'
+      loop:
+        - "fullchain.pem"
+        - "privkey.pem"
+
+    - name: Configure SSL parameters
+      template:
+        src: ssl-params.conf.j2
+        dest: /etc/nginx/ssl-params.conf
+        mode: '0644'
+
+- name: Configure rate limiting
+  block:
+    - name: Install and configure nginx-rate-limiting
+      template:
+        src: nginx-rate-limiting.conf.j2
+        dest: /etc/nginx/conf.d/rate-limiting.conf
+        mode: '0644'
+
+    - name: Configure Apache rate limiting
+      template:
+        src: apache-rate-limiting.conf.j2
+        dest: /etc/apache2/conf-available/rate-limiting.conf
+        mode: '0644'
+
+- name: Configure WAF rules
+  block:
+    - name: Install ModSecurity
+      apt:
+        name:
+          - libapache2-mod-security2
+          - modsecurity-crs
+        state: present
+
+    - name: Configure ModSecurity
+      template:
+        src: modsecurity.conf.j2
+        dest: /etc/modsecurity/modsecurity.conf
+        mode: '0644'
+
+- name: Configure Cloudflare integration
+  block:
+    - name: Install Cloudflare CLI
+      pip:
+        name: cloudflare
+        state: present
+
+    - name: Configure Cloudflare API
+      copy:
+        src: cloudflare-config.json
+        dest: /root/.cloudflare/config.json
+        mode: '0600'
+
+- name: Configure monitoring
+  block:
+    - name: Install security monitoring tools
+      apt:
+        name:
+          - prometheus-node-exporter
+          - grafana-agent
+        state: present
+
+    - name: Configure security monitoring
+      template:
+        src: security-monitoring-config.yaml.j2
+        dest: /etc/grafana-agent/config.yaml
+        mode: '0644'
+
+- name: Configure regular security scans
+  cron:
+    name: "{{ item.name }}"
+    minute: "{{ item.minute }}"
+    hour: "{{ item.hour }}"
+    job: "{{ item.job }}"
+    state: present
+  loop:
+    - name: "Daily security scan"
+      minute: "0"
+      hour: "0"
+      job: "/usr/bin/nmap -sV -O --script vuln {{ ansible_host }} >> /var/log/security_scan.log 2>&1"
+    - name: "Weekly vulnerability scan"
+      minute: "0"
+      hour: "0"
+      job: "/usr/bin/nessus64 --scan {{ ansible_host }} >> /var/log/vuln_scan.log 2>&1"
+
+- name: Configure security alerts
+  block:
+    - name: Install alerting tools
+      apt:
+        name:
+          - telegram-bot-api
+          - mailutils
+        state: present
+
+    - name: Configure security alerts
+      template:
+        src: security-alerts.conf.j2
+        dest: /etc/security/alerts.conf
+        mode: '0644'
+
+handlers:
+  - name: restart ssh
+    systemd:
+      name: ssh
+      state: restarted
+
+  - name: restart ossec
+    systemd:
+      name: ossec
+      state: restarted
+
+  - name: restart snort
+    systemd:
+      name: snort
+      state: restarted
+
+  - name: restart suricata
+    systemd:
+      name: suricata
+      state: restarted

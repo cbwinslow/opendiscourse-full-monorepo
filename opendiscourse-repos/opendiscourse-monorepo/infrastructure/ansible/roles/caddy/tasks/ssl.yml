@@ -1,0 +1,136 @@
+---
+# SSL/TLS configuration for Caddy
+
+- name: Validate SSL configuration
+  ansible.builtin.assert:
+    that:
+      - "caddy_ssl is defined"
+      - "caddy_ssl.enabled | default(true) | bool"
+      - "caddy_ssl.issuer is defined"
+      - "caddy_ssl.email is defined or caddy_ssl.issuer != 'letsencrypt'"
+    success_msg: "SSL configuration validation passed"
+    fail_msg: "Invalid SSL configuration. Please check caddy_ssl settings."
+  tags: [caddy, ssl, validate]
+
+- name: Ensure SSL directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    mode: '0750'
+  loop:
+    - "/etc/ssl/caddy"
+    - "/var/lib/caddy/.local/share/caddy"
+    - "/var/lib/caddy/.local/share/caddy/certificates"
+  tags: [caddy, ssl]
+
+- name: Set up Let's Encrypt account
+  block:
+    - name: Create Let's Encrypt account directory
+      ansible.builtin.file:
+        path: "/var/lib/caddy/.local/share/caddy/certificates/{{ caddy_ssl.issuer_email | regex_replace('@', '_at_') }}"
+        state: directory
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+        mode: '0750'
+
+    - name: Generate Let's Encrypt account key
+      community.crypto.openssl_privatekey:
+        path: "/var/lib/caddy/.local/share/caddy/certificates/{{ caddy_ssl.issuer_email | regex_replace('@', '_at_') }}/account.key"
+        type: "{{ caddy_ssl.key_type | default('RSA') }}"
+        size: "{{ caddy_ssl.key_bits | default(4096) }}"
+        mode: '0600'
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+
+    - name: Register Let's Encrypt account
+      community.crypto.acme_account:
+        account_key_src: "/var/lib/caddy/.local/share/caddy/certificates/{{ caddy_ssl.issuer_email | regex_replace('@', '_at_') }}/account.key"
+        contact: "mailto:{{ caddy_ssl.email }}"
+        terms_agreed: true
+        acme_directory: "{{ 'https://acme-staging-v02.api.letsencrypt.org/directory' if caddy_ssl.staging | default(false) else 'https://acme-v02.api.letsencrypt.org/directory' }}"
+        state: present
+      register: le_account
+      changed_when: false
+  when: caddy_ssl.issuer == 'letsencrypt'
+  tags: [caddy, ssl, letsencrypt]
+
+- name: Generate self-signed certificates if needed
+  block:
+    - name: Create certificate directory
+      ansible.builtin.file:
+        path: "/etc/ssl/caddy/{{ item.name }}"
+        state: directory
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+        mode: '0750'
+
+    - name: Generate private key
+      community.crypto.openssl_privatekey:
+        path: "/etc/ssl/caddy/{{ item.name }}/key.pem"
+        type: "{{ caddy_ssl.key_type | default('RSA') }}"
+        size: "{{ caddy_ssl.key_bits | default(4096) }}"
+        mode: '0640'
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+      register: privkey
+
+    - name: Generate CSR
+      community.crypto.openssl_csr:
+        path: "/etc/ssl/caddy/{{ item.name }}/csr.pem"
+        privatekey_path: "/etc/ssl/caddy/{{ item.name }}/key.pem"
+        country_name: "{{ item.country | default('US') }}"
+        organization_name: "{{ item.organization | default('Self-Signed') }}"
+        common_name: "{{ item.name }}"
+        subject_alt_name: "{{ item.alt_names | default([]) | map('regex_replace', '^', 'DNS:') | join(',') }}"
+        basic_constraints_critical: true
+        key_usage_critical: true
+        key_usage:
+          - digitalSignature
+          - keyEncipherment
+        extended_key_usage:
+          - serverAuth
+        basic_constraints:
+          - CA:FALSE
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+        mode: '0640'
+
+    - name: Generate self-signed certificate
+      community.crypto.openssl_certificate:
+        path: "/etc/ssl/caddy/{{ item.name }}/cert.pem"
+        csr_path: "/etc/ssl/caddy/{{ item.name }}/csr.pem"
+        privatekey_path: "/etc/ssl/caddy/{{ item.name }}/key.pem"
+        provider: selfsigned
+        selfsigned_digest: "{{ caddy_ssl.digest | default('sha256') }}"
+        selfsigned_not_after: "{{ item.expiry | default('365') }}d"
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+        mode: '0640'
+
+  with_items: "{{ caddy_ssl.certificates | default([]) }}"
+  when: 
+    - caddy_ssl.certificates is defined
+    - item.selfsigned | default(false)
+  tags: [caddy, ssl, selfsigned]
+
+- name: Set proper permissions for SSL certificates
+  ansible.builtin.file:
+    path: "/etc/ssl/caddy"
+    state: directory
+    recurse: true
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    mode: '0750'
+  tags: [caddy, ssl]
+
+- name: Ensure Caddy can read SSL certificates
+  ansible.builtin.file:
+    path: "/var/lib/caddy/.local/share/caddy"
+    state: directory
+    recurse: true
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    mode: '0750'
+  tags: [caddy, ssl, permissions]

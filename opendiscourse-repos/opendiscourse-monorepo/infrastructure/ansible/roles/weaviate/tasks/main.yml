@@ -1,0 +1,22 @@
+---
+- name: Create Weaviate directories
+  file:
+    path: "{{ weaviate_base_dir }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  with_items:
+    - data
+    - config
+
+- name: Copy Weaviate configuration
+  template:
+    src: weaviate-config.json.j2
+    dest: "{{ weaviate_base_dir }}/config/weaviate-config.json"
+    mode: '0644'
+
+- name: Create Weaviate service
+  template:
+    src: weaviate.service.j2
+    dest: /etc/systemd/system/weaviate.service
+    mode: '0644'
+  notify: restart weaviate

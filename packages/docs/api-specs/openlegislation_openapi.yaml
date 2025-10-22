@@ -1,0 +1,538 @@
+openapi: 3.0.0
+info:
+  title: OpenLegislation API
+  description: API for accessing New York State legislative information
+  version: 3.0.0
+servers:
+  - url: https://legislation.nysenate.gov/api/3
+    description: Production server
+paths:
+  /bills/{bill_id}-{year}.{format}:
+    get:
+      summary: Get a specific bill by ID and year
+      parameters:
+        - name: bill_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: year
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [json, xml, jsonp]
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bill details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillResponse'
+        '401':
+          description: Invalid API Key
+  /meetings/{committee}-{MM}-{DD}-{YYYY}.{format}:
+    get:
+      summary: Get a specific meeting by committee and date
+      parameters:
+        - name: committee
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: MM
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: DD
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: YYYY
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [json, xml, jsonp]
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Meeting details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+        '401':
+          description: Invalid API Key
+  /calendars/{calendar_type}-{MM}-{DD}-{YYYY}.{format}:
+    get:
+      summary: Get a specific calendar by type and date
+      parameters:
+        - name: calendar_type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [floor, active]
+        - name: MM
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: DD
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: YYYY
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [json, xml, jsonp]
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Calendar details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarResponse'
+        '401':
+          description: Invalid API Key
+  /transcripts/{session_type}-session-{MM}-{DD}-{YYYY}.{format}:
+    get:
+      summary: Get a specific transcript by session type and date
+      parameters:
+        - name: session_type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [regular, special]
+        - name: MM
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: DD
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: YYYY
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [json, xml, jsonp]
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transcript details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptResponse'
+        '401':
+          description: Invalid API Key
+  /search.{format}:
+    get:
+      summary: Search for documents using Lucene query syntax
+      parameters:
+        - name: format
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [json, xml, rss, atom, jsonp]
+        - name: term
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 20
+        - name: pageIdx
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: callback
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '401':
+          description: Invalid API Key
+components:
+  schemas:
+    BillResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            metadata:
+              type: object
+              properties:
+                totalresults:
+                  type: integer
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  oid:
+                    type: string
+                  url:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Bill'
+    MeetingResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            metadata:
+              type: object
+              properties:
+                totalresults:
+                  type: integer
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "meeting"
+                  oid:
+                    type: string
+                  url:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Meeting'
+    CalendarResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            metadata:
+              type: object
+              properties:
+                totalresults:
+                  type: integer
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "calendar"
+                  oid:
+                    type: string
+                  url:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Calendar'
+    TranscriptResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            metadata:
+              type: object
+              properties:
+                totalresults:
+                  type: integer
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "transcript"
+                  oid:
+                    type: string
+                  url:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Transcript'
+    SearchResponse:
+      type: object
+      properties:
+        response:
+          type: object
+          properties:
+            metadata:
+              type: object
+              properties:
+                totalresults:
+                  type: integer
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  oid:
+                    type: string
+                  url:
+                    type: string
+                  data:
+                    type: object
+    Bill:
+      type: object
+      properties:
+        year:
+          type: string
+        senateBillNo:
+          type: string
+        title:
+          type: string
+        lawSection:
+          type: string
+        sameAs:
+          type: string
+        previousVersions:
+          type: array
+          items:
+            type: string
+        sponsor:
+          type: object
+          properties:
+            fullname:
+              type: string
+        coSponsors:
+          type: array
+          items:
+            type: string
+        multiSponsors:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+        currentCommittee:
+          type: string
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              text:
+                type: string
+        fulltext:
+          type: string
+        memo:
+          type: string
+        law:
+          type: string
+        votes:
+          type: array
+          items:
+            type: object
+            properties:
+              voteType:
+                type: string
+              voteDate:
+                type: string
+              ayes:
+                type: array
+                items:
+                  type: string
+              nays:
+                type: array
+                items:
+                  type: string
+              abstains:
+                type: array
+                items:
+                  type: string
+              excused:
+                type: array
+                items:
+                  type: string
+              ayeswr:
+                type: array
+                items:
+                  type: string
+              description:
+                type: string
+    Meeting:
+      type: object
+      properties:
+        meetingDateTime:
+          type: string
+        meetday:
+          type: string
+        location:
+          type: string
+        committeeName:
+          type: string
+        committeeChair:
+          type: string
+        bills:
+          type: array
+          items:
+            type: object
+            properties:
+              year:
+                type: string
+              senateBillNo:
+                type: string
+              title:
+                type: string
+              sameAs:
+                type: string
+              sponsor:
+                type: object
+                properties:
+                  fullname:
+                    type: string
+              summary:
+                type: string
+        notes:
+          type: string
+    Calendar:
+      type: object
+      properties:
+        year:
+          type: string
+        type:
+          type: string
+        sessionYear:
+          type: string
+        no:
+          type: string
+        supplementals:
+          type: array
+          items:
+            type: object
+            properties:
+              calendarDate:
+                type: string
+              releaseDateTime:
+                type: string
+              sections:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    cd:
+                      type: string
+                    calendarEntries:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          no:
+                            type: string
+                          bill:
+                            type: object
+                          billHigh:
+                            type: boolean
+                          subBill:
+                            type: string
+                          motionDate:
+                            type: string
+              sequence:
+                type: object
+        id:
+          type: string
+    Transcript:
+      type: object
+      properties:
+        timeStamp:
+          type: string
+        location:
+          type: string
+        type:
+          type: string
+        transcriptText:
+          type: string

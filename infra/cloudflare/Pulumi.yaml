@@ -1,0 +1,3 @@
+name: opendiscourse-cloudflare
+runtime: nodejs
+description: OpenDiscourse infrastructure on Cloudflare

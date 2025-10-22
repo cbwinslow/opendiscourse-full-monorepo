@@ -1,0 +1,164 @@
+---
+# Security role default variables
+
+# Fail2ban configuration
+fail2ban:
+  enabled: false  # Set to true to enable fail2ban
+  ignoreip: '127.0.0.1/8 ::1'
+  bantime: 3600  # 1 hour in seconds
+  findtime: 600   # 10 minutes in seconds
+  maxretry: 5
+  destemail: 'root@localhost'
+  sender: 'root@localhost'
+  action: 'action_mwl'  # Will be processed by the template
+
+# System hardening configurations
+security_hardening:
+  # SSH hardening
+  ssh:
+    port: 2222
+    permit_root_login: 'no'
+    password_authentication: 'no'
+    x11_forwarding: 'no'
+    allow_tcp_forwarding: 'no'
+    max_auth_tries: 3
+    max_sessions: 5
+    client_alive_interval: 300
+    client_alive_count_max: 3
+
+  # Firewall rules
+  firewall:
+    default_policy: 'deny'
+    default_outgoing_policy: 'allow'
+    allow_ports:
+      - { port: '{{ security_hardening.ssh.port }}', proto: 'tcp', comment: 'SSH' }
+      - { port: '80', proto: 'tcp', comment: 'HTTP' }
+      - { port: '443', proto: 'tcp', comment: 'HTTPS' }
+    allow_ips: []
+
+  # System limits
+  limits:
+    hard_nofile: 65535
+    soft_nofile: 65535
+    hard_nproc: 4096
+    soft_nproc: 4096
+
+  # Kernel parameters
+  sysctl:
+    net.ipv4.tcp_syncookies: 1
+    net.ipv4.ip_forward: 0
+    net.ipv4.conf.all.send_redirects: 0
+    net.ipv4.conf.default.send_redirects: 0
+    net.ipv4.conf.all.accept_redirects: 0
+    net.ipv4.conf.default.accept_redirects: 0
+    net.ipv4.conf.all.secure_redirects: 0
+    net.ipv4.conf.default.secure_redirects: 0
+    net.ipv4.icmp_echo_ignore_broadcasts: 1
+    net.ipv4.icmp_ignore_bogus_error_responses: 1
+    net.ipv4.conf.all.rp_filter: 1
+    net.ipv4.conf.default.rp_filter: 1
+    net.ipv4.conf.all.log_martians: 1
+    net.ipv4.conf.default.log_martians: 1
+    net.ipv4.conf.all.accept_source_route: 0
+    net.ipv4.conf.default.accept_source_route: 0
+    net.ipv6.conf.all.accept_source_route: 0
+    net.ipv6.conf.default.accept_source_route: 0
+    net.ipv4.conf.all.send_redirects: 0
+    net.ipv4.conf.default.send_redirects: 0
+    net.ipv4.conf.all.accept_redirects: 0
+    net.ipv4.conf.default.accept_redirects: 0
+    net.ipv6.conf.all.accept_redirects: 0
+    net.ipv6.conf.default.accept_redirects: 0
+    net.ipv4.conf.all.secure_redirects: 0
+    net.ipv4.conf.default.secure_redirects: 0
+
+# Fail2ban configuration
+fail2ban:
+  enabled: true
+  ignoreip: 127.0.0.1/8 ::1
+  bantime: 3600
+  findtime: 600
+  maxretry: 5
+  destemail: root@localhost
+  action: %(action_mwl)s
+  jails:
+    - ssh
+    - ssh-ddos
+    - recidive
+
+# Automatic security updates
+security_updates:
+  enabled: true
+  unattended_upgrades: true
+  auto_reboot: false
+  auto_reboot_time: '03:00'
+  update_packages: true
+  upgrade_type: 'security'  # 'security' or 'all'
+  mail: 'root@localhost'
+  mail_only_on_error: true
+  remove_unused_dependencies: true
+  automatic_reboot: false
+  automatic_reboot_with_users: false
+  automatic_reboot_time: 'now'
+
+# Auditd configuration
+auditd:
+  enabled: true
+  log_file: /var/log/audit/audit.log
+  max_log_file: 50
+  max_log_file_action: 'keep_logs'
+  space_left: 75
+  space_left_action: 'email'
+  action_mail_acct: 'root'
+  admin_space_left: 50
+  admin_space_left_action: 'suspend'
+  disk_full_action: 'SUSPEND'
+  disk_error_action: 'SUSPEND'
+  flush: 'incremental_async'
+  freq: 50
+  num_logs: 5
+  priority_boost: 4
+  name_format: 'hostname'
+  max_log_file_action: 'keep_logs'
+  log_group: 'root'
+
+# Common security packages to install
+security_packages:
+  - fail2ban
+  - ufw
+  - auditd
+  - libpam-pwquality
+  - libpam-tmpdir
+  - libpam-google-authenticator
+  - openssl
+  - ssl-cert
+  - unattended-upgrades
+  - apt-listchanges
+  - debsum
+  - debsums-apt
+  - needrestart
+  - logwatch
+  - logcheck
+  - aide
+  - rkhunter
+  - chkrootkit
+  - lynis
+  - clamav
+  - clamav-daemon
+  - clamav-freshclam
+  - apparmor
+  - apparmor-utils
+  - apparmor-profiles
+  - apparmor-profiles-extra
+  - selinux-basics
+  - selinux-policy-default
+  - selinux-utils
+  - policycoreutils
+  - setools
+  - setroubleshoot
+  - auditd
+  - audispd-plugins
+  - acct
+  - acct
+  - acct
+  - acct

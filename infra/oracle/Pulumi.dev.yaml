@@ -1,0 +1,7 @@
+config:
+  opendiscourse-oracle:compartmentId:
+    value: "your-compartment-ocid"
+  opendiscourse-oracle:availabilityDomain:
+    value: "your-availability-domain"
+  opendiscourse-oracle:sshPublicKey:
+    value: "your-ssh-public-key"

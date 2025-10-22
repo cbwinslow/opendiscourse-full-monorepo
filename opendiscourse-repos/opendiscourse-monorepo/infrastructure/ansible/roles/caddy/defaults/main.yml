@@ -1,0 +1,200 @@
+---
+# Default variables for Caddy role
+
+# Core configuration
+caddy_enabled: true
+caddy_version: "2.7.5"
+caddy_user: "www-data"
+caddy_group: "www-data"
+
+# Service configuration
+caddy_service:
+  enabled: true
+  state: "started"
+  restart_on_change: true
+  environment: {}
+  limit_nofile: 1048576
+  limit_nproc: 512
+
+# SSL/TLS configuration
+caddy_ssl:
+  enabled: true
+  email: "admin@example.com"
+  key_type: "p384"
+  issuer: "letsencrypt"
+  staging: false
+  acme_ca: "https://acme-v02.api.letsencrypt.org/directory"
+  disable_http_challenge: false
+  disable_tls_alpn_challenge: false
+  eab_key_id: ""
+  eab_mac_key: ""
+
+# Global Caddy options
+caddy_global_options:
+  admin: "localhost:2019"
+  log:
+    output: "file /var/log/caddy/access.log"
+    format: "json"
+    level: "INFO"
+  storage: "file_system"
+  storage_config: "/var/lib/caddy"
+  ocsp_stapling: true
+  auto_https: "on"
+  servers: {}
+
+# Default site configuration
+caddy_sites: []
+# Example site configuration:
+# - name: example.com
+#   server_name: "example.com www.example.com"
+#   listen: [":80", ":443"]
+#   root: "/var/www/example.com"
+#   tls: true
+#   redirect_www: true
+#   gzip: true
+#   reverse_proxy: ["localhost:3000"]
+#   headers:
+#     Strict-Transport-Security: "max-age=31536000"
+#     X-Content-Type-Options: "nosniff"
+#     X-Frame-Options: "SAMEORIGIN"
+#     X-XSS-Protection: "1; mode=block"
+#   rate_limit:
+#     enabled: true
+#     rate: "100"
+#     burst: "50"
+#     except: ["127.0.0.1"]
+
+# Rate limiting configuration
+caddy_rate_limit:
+  enabled: true
+  rate: "100/1m"
+  burst: 100
+  key: "{http.request.remote.host}"
+  zone: "default"
+  storage: "memory"
+
+# Monitoring configuration
+caddy_monitoring:
+  enabled: true
+  
+  # Prometheus metrics endpoint
+  prometheus: true
+  metrics_host: "{{ monitoring_prometheus_host | default('localhost') }}"
+  metrics_port: "{{ monitoring_prometheus_port | default(2019) }}"
+  metrics_path: "{{ monitoring_metrics_path | default('/metrics') }}"
+  metrics_interval: "15s"
+  metrics_timeout: "10s"
+  
+  # Health check endpoint
+  health_check: true
+  health_host: "{{ monitoring_health_host | default('localhost') }}"
+  health_path: "{{ monitoring_health_path | default('/health') }}"
+  health_timeout: "5s"
+  
+  # Loki logging
+  loki:
+    enabled: true
+    url: "{{ monitoring_loki_url | default('http://localhost:3100') }}"
+    labels:
+      job: "caddy"
+      instance: "{{ inventory_hostname }}"
+      environment: "{{ env | default('production') }}"
+    batch_wait: "1s"
+    batch_size: 1048576
+    
+  # Alerting
+  alerting:
+    enabled: true
+    alertmanager_url: "{{ monitoring_alertmanager_url | default('http://localhost:9093') }}"
+    group_by: ['alertname', 'severity']
+    group_wait: "10s"
+    group_interval: "5m"
+    repeat_interval: "3h"
+    
+  # Grafana integration
+  grafana:
+    enabled: true
+    dashboard_provider: "{{ monitoring_grafana_dashboard_provider | default('prometheus') }}"
+    datasource: "{{ monitoring_grafana_datasource | default('prometheus') }}"
+
+# Security headers
+caddy_security_headers:
+  enabled: true
+  referrer_policy: "strict-origin-when-cross-origin"
+  feature_policy: ""
+  permissions_policy: ""
+  content_security_policy: ""
+  x_frame_options: "SAMEORIGIN"
+  x_content_type_options: "nosniff"
+  x_xss_protection: "1; mode=block"
+  strict_transport_security: "max-age=31536000; includeSubDomains; preload"
+  expect_ct: ""
+  x_permitted_cross_domain_policies: "none"
+  cross_origin_embedder_policy: "require-corp"
+  cross_origin_opener_policy: "same-origin"
+  cross_origin_resource_policy: "same-origin"
+  x_download_options: "noopen"
+  x_dns_prefetch_control: "off"
+
+# Logging configuration
+caddy_logging:
+  enabled: true
+  level: "INFO"
+  format: "json"
+  output: "/var/log/caddy/access.log"
+  rotation:
+    enabled: true
+    max_size: "100MB"
+    max_age: 7
+    max_backups: 10
+    compress: true
+
+# OS-specific variables
+caddy_package_name: "caddy"
+caddy_config_dir: "/etc/caddy"
+caddy_data_dir: "/var/lib/caddy"
+caddy_log_dir: "/var/log/caddy"
+caddy_bin_path: "/usr/bin/caddy"
+
+# Systemd service configuration
+caddy_systemd:
+  cpu_quota: "100%"
+  memory_high: "80%"
+  memory_max: "90%"
+  tasks_max: 4096
+  limit_nofile: 1048576
+  limit_nproc: 512
+  nice: 0
+  oom_score_adjust: -1000
+  protect_system: "full"
+  protect_home: true
+  private_tmp: true
+  private_devices: true
+  protect_kernel_tunables: true
+  protect_kernel_modules: true
+  protect_control_groups: true
+  no_new_privileges: true
+  restrict_address_families: ["AF_INET", "AF_INET6", "AF_UNIX"]
+  restrict_realtime: true
+  system_call_filter: ["@system-service", "~@resources", "~@obsolete"]
+  umask: "0022"
+  cap_drop: ["all"]
+  ambient_capabilities: ["CAP_NET_BIND_SERVICE"]
+  user: "www-data"
+  group: "www-data"
+  runtime_directory: "caddy"
+  runtime_directory_mode: "0755"
+  cache_directory: "caddy"
+  cache_directory_mode: "0755"
+  logs_directory: "caddy"
+  logs_directory_mode: "0755"
+  state_directory: "caddy"
+  state_directory_mode: "0750"
+  configuration_directory: "caddy"
+  configuration_directory_mode: "0750"
+  timeout_start_sec: 30
+  timeout_stop_sec: 30
+  restart: "on-failure"
+  restart_sec: 5
+  start_limit_interval_sec: 60
+  start_limit_burst: 5

@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: Your Name
+  description: Flowise role for deploying and managing Flowise service
+  company: Your Company
+  license: Proprietary
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+  galaxy_tags:
+    - flowise
+    - ai
+    - llm
+
+dependencies:
+  - { role: common }
+  - { role: docker }

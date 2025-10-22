@@ -1,0 +1,8 @@
+---
+- name: Test Security Role
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: security
+  tags: [security, test]

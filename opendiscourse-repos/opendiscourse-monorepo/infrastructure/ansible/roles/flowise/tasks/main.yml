@@ -1,0 +1,16 @@
+---
+- name: Create Flowise directory
+  file:
+    path: "{{ flowise_base_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy Flowise Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ flowise_base_dir }}/docker-compose.yml"
+
+- name: Start Flowise
+  command: docker-compose up -d
+  args:
+    chdir: "{{ flowise_base_dir }}"

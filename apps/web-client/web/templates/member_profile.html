@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="member-profile">
+    <!-- Profile content will be loaded here -->
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading member profile...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const personId = '{{ person_id }}';
+    
+    // Load member profile when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadMemberProfile();
+    });
+    
+    function loadMemberProfile() {
+        fetch(`/api/members/${personId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Member not found');
+                }
+                return response.json();
+            })
+            .then(member => {
+                displayMemberProfile(member);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('member-profile').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Error loading member profile. Please try again.
+                    </div>
+                `;
+            });
+    }
+    
+    function displayMemberProfile(member) {
+        let html = `
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        ${member.image_url ? 
+                            `<img src="${member.image_url}" class="card-img-top" alt="${member.name}" style="height: 300px; object-fit: cover;">` : 
+                            `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 300px;">
+                                <i class="fas fa-user fa-5x text-muted"></i>
+                            </div>`
+                        }
+                        <div class="card-body">
+                            <h5 class="card-title">${member.name}</h5>
+                            ${member.party_affiliations && member.party_affiliations.length > 0 ? 
+                                `<p class="card-text">
+                                    <span class="badge bg-primary">
+                                        ${member.party_affiliations[0].name}
+                                    </span>
+                                </p>` : ''
+                            }
+                            <p class="card-text">
+                                ${member.biography ? `<small class="text-muted">${member.biography.substring(0, 200)}...</small>` : ''}
+                            </p>
+                            ${member.email ? `<p class="card-text"><i class="fas fa-envelope"></i> <a href="mailto:${member.email}">${member.email}</a></p>` : ''}
+                            ${member.source_url ? `<p class="card-text"><i class="fas fa-link"></i> <a href="${member.source_url}" target="_blank">Official Profile</a></p>` : ''}
+                        </div>
+                    </div>
+                    
+                    <!-- KPI Summary Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Performance Metrics</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <span>Voting Participation</span>
+                                <span class="fw-bold">85%</span>
+                            </div>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 85%"></div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <span>Bills Sponsored</span>
+                                <span class="fw-bold">12</span>
+                            </div>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: 60%"></div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <span>Public Engagement</span>
+                                <span class="fw-bold">78%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: 78%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-8">
+                    <ul class="nav nav-tabs" id="profileTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">Overview</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="positions-tab" data-bs-toggle="tab" data-bs-target="#positions" type="button" role="tab">Positions</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="votes-tab" data-bs-toggle="tab" data-bs-target="#votes" type="button" role="tab">Votes</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="bills-tab" data-bs-toggle="tab" data-bs-target="#bills" type="button" role="tab">Bills</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="discrepancies-tab" data-bs-toggle="tab" data-bs-target="#discrepancies" type="button" role="tab">Discrepancies</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="profileTabContent">
+                        <!-- Overview Tab -->
+                        <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h3>Current Positions</h3>
+                                    ${member.roles && member.roles.length > 0 ? `
+                                        <div class="row">
+                                            ${member.roles.slice(0, 3).map(role => `
+                                                <div class="col-md-6 mb-3">
+                                                    <div class="card">
+                                                        <div class="card-body">
+                                                            <h5 class="card-title">${role.type}</h5>
+                                                            <p class="card-text">${role.jurisdiction}</p>
+                                                            ${role.district ? `<p class="card-text"><small class="text-muted">District: ${role.district}</small></p>` : ''}
+                                                            <p class="card-text">
+                                                                <small class="text-muted">
+                                                                    ${role.start_date ? `Since ${role.start_date}` : ''}
+                                                                    ${role.end_date ? ` to ${role.end_date}` : ''}
+                                                                </small>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : '<p>No current positions found.</p>'}
+                                    
+                                    <h3>Recent Activity</h3>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="card text-center">
+                                                <div class="card-body">
+                                                    <h3 class="card-title">24</h3>
+                                                    <p class="card-text">Votes Cast</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card text-center">
+                                                <div class="card-body">
+                                                    <h3 class="card-title">8</h3>
+                                                    <p class="card-text">Bills Sponsored</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card text-center">
+                                                <div class="card-body">
+                                                    <h3 class="card-title">15</h3>
+                                                    <p class="card-text">Public Statements</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Positions Tab -->
+                        <div class="tab-pane fade" id="positions" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h3>Committee Memberships</h3>
+                                    ${member.committees && member.committees.length > 0 ? `
+                                        <div class="list-group">
+                                            ${member.committees.map(committee => `
+                                                <div class="list-group-item">
+                                                    <div class="d-flex w-100 justify-content-between">
+                                                        <h5 class="mb-1">${committee.name}</h5>
+                                                        <small>${committee.role}</small>
+                                                    </div>
+                                                    <p class="mb-1">${committee.jurisdiction}</p>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : '<p>No committee memberships found.</p>'}
+                                    
+                                    <h3 class="mt-4">Party Affiliations</h3>
+                                    ${member.party_affiliations && member.party_affiliations.length > 0 ? `
+                                        <div class="list-group">
+                                            ${member.party_affiliations.map(party => `
+                                                <div class="list-group-item">
+                                                    <div class="d-flex w-100 justify-content-between">
+                                                        <h5 class="mb-1">${party.name}</h5>
+                                                        <small>${party.start_date} - ${party.end_date || 'Present'}</small>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : '<p>No party affiliations found.</p>'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Votes Tab -->
+                        <div class="tab-pane fade" id="votes" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h3>Recent Votes</h3>
+                                    ${member.recent_votes && member.recent_votes.length > 0 ? `
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Bill</th>
+                                                        <th>Position</th>
+                                                        <th>Result</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${member.recent_votes.map(vote => `
+                                                        <tr>
+                                                            <td>${vote.date}</td>
+                                                            <td>
+                                                                ${vote.bill_identifier ? `${vote.bill_identifier}: ` : ''}
+                                                                ${vote.bill_title || vote.motion}
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge ${vote.position === 'yes' ? 'bg-success' : vote.position === 'no' ? 'bg-danger' : 'bg-secondary'}">
+                                                                    ${vote.position}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge ${vote.result === 'pass' ? 'bg-success' : 'bg-danger'}">
+                                                                    ${vote.result}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ` : '<p>No voting records found.</p>'}
+                                    
+                                    <div class="d-flex justify-content-center mt-3">
+                                        <button class="btn btn-outline-primary">View All Votes</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bills Tab -->
+                        <div class="tab-pane fade" id="bills" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h3>Recent Sponsored Bills</h3>
+                                    ${member.recent_bills && member.recent_bills.length > 0 ? `
+                                        <div class="list-group">
+                                            ${member.recent_bills.map(bill => `
+                                                <a href="/bill/${bill.identifier}" class="list-group-item list-group-item-action">
+                                                    <div class="d-flex w-100 justify-content-between">
+                                                        <h5 class="mb-1">${bill.identifier}</h5>
+                                                        <small>${bill.date}</small>
+                                                    </div>
+                                                    <p class="mb-1">${bill.title}</p>
+                                                    ${bill.type ? `<small class="text-muted">${bill.type}</small>` : ''}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    ` : '<p>No sponsored bills found.</p>'}
+                                    
+                                    <div class="d-flex justify-content-center mt-3">
+                                        <button class="btn btn-outline-primary">View All Sponsored Bills</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Discrepancies Tab -->
+                        <div class="tab-pane fade" id="discrepancies" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h3>Identified Discrepancies</h3>
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <strong>Notice:</strong> Potential discrepancies between voting behavior and public statements are identified automatically. These findings require human review for accuracy.
+                                    </div>
+                                    
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5>Healthcare Policy Discrepancy</h5>
+                                            <p><strong>Issue:</strong> Healthcare reform legislation</p>
+                                            <p><strong>Voting Position:</strong> <span class="badge bg-success">Yes</span></p>
+                                            <p><strong>Public Statement Position:</strong> <span class="badge bg-danger">Negative</span></p>
+                                            <p><strong>Confidence Score:</strong> 85%</p>
+                                            <p><strong>Evidence:</strong> Voted YES on healthcare reform bill while publicly stating concerns about the legislation's impact on small businesses.</p>
+                                            <button class="btn btn-sm btn-outline-primary">View Details</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mt-3">
+                                        <div class="card-body">
+                                            <h5>Environmental Policy Discrepancy</h5>
+                                            <p><strong>Issue:</strong> Climate change legislation</p>
+                                            <p><strong>Voting Position:</strong> <span class="badge bg-danger">No</span></p>
+                                            <p><strong>Public Statement Position:</strong> <span class="badge bg-success">Positive</span></p>
+                                            <p><strong>Confidence Score:</strong> 72%</p>
+                                            <p><strong>Evidence:</strong> Voted NO on climate bill while supporting environmental initiatives in campaign speeches.</p>
+                                            <button class="btn btn-sm btn-outline-primary">View Details</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('member-profile').innerHTML = html;
+        
+        // Update page title
+        document.title = `${member.name} - OpenDiscourse`;
+    }
+</script>
+{% endblock %}

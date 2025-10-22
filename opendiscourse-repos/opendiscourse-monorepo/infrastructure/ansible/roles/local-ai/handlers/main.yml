@@ -1,0 +1,71 @@
+---
+# LocalAI Service Handlers
+# These handlers manage the LocalAI service and related components
+
+- name: daemon-reload
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  listen: daemon-reload
+
+- name: enable localai
+  ansible.builtin.systemd:
+    name: local-ai
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  listen:
+    - enable localai
+    - restart localai
+
+- name: restart localai
+  ansible.builtin.systemd:
+    name: local-ai
+    state: restarted
+    daemon_reload: yes
+  listen: restart localai
+  when: ansible_service_mgr == 'systemd'
+
+- name: stop localai
+  ansible.builtin.systemd:
+    name: local-ai
+    state: stopped
+  listen: stop localai
+  when: ansible_service_mgr == 'systemd'
+
+- name: verify localai
+  ansible.builtin.uri:
+    url: "http://{{ local_ai_host }}:{{ local_ai_port }}/v1/models"
+    method: GET
+    status_code: 200
+    timeout: 30
+    headers:
+      Authorization: "Bearer {{ local_ai_api_key }}"
+  register: localai_health
+  until: localai_health.status == 200
+  retries: 10
+  delay: 5
+  changed_when: false
+  listen: verify localai
+
+- name: restart docker
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  listen: restart docker
+  when: ansible_service_mgr == 'systemd'
+
+- name: reload docker
+  ansible.builtin.systemd:
+    name: docker
+    state: reloaded
+  listen: reload docker
+  when: ansible_service_mgr == 'systemd'
+
+- name: restart prometheus
+  ansible.builtin.systemd:
+    name: prometheus
+    state: restarted
+  listen: restart prometheus
+  when: 
+    - local_ai_enable_prometheus | default(true) | bool
+    - ansible_service_mgr == 'systemd'

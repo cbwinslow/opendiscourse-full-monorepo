@@ -1,0 +1,306 @@
+---
+# Deploy Local AI Packaged Stack to Hetzner Server
+- name: Deploy Local AI Packaged Stack
+  hosts: hetzner_server
+  become: true
+  vars:
+    # Project configuration
+    project_name: local-ai-packaged
+    project_dir: /opt/{{ project_name }}
+    project_user: localai
+    project_group: localai
+    
+    # Environment configuration
+    environment_type: public  # For production deployment
+    gpu_profile: cpu  # Using CPU for this deployment
+    
+    # Domain configuration from .env
+    domain_base: opendiscourse.net
+    letsencrypt_email: postmaster@opendiscourse.net
+    
+    # Service hostnames
+    n8n_hostname: n8n.{{ domain_base }}
+    webui_hostname: openwebui.{{ domain_base }}
+    flowise_hostname: flowise.{{ domain_base }}
+    supabase_hostname: supabase.{{ domain_base }}
+    langfuse_hostname: langfuse.{{ domain_base }}
+    ollama_hostname: ollama.{{ domain_base }}
+    searxng_hostname: searxng.{{ domain_base }}
+    neo4j_hostname: neo4j.{{ domain_base }}
+    
+    # Required ports for public deployment
+    required_ports:
+      - 80
+      - 443
+    
+  pre_tasks:
+    - name: Check if running as root or with sudo
+      ansible.builtin.fail:
+        msg: "This playbook must be run with become: true (sudo privileges)"
+      when: ansible_user_id != "root" and ansible_become is not defined
+      tags: [always]
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      tags: [system]
+
+    - name: Install required system packages
+      ansible.builtin.apt:
+        name:
+          - git
+          - python3
+          - python3-pip
+          - python3-venv
+          - curl
+          - wget
+          - ufw
+          - docker.io
+          - docker-compose-plugin
+        state: present
+      tags: [system]
+
+    - name: Configure UFW firewall
+      block:
+        - name: Enable UFW
+          community.general.ufw:
+            state: enabled
+            policy: deny
+            direction: incoming
+          tags: [security]
+
+        - name: Allow required ports
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            proto: tcp
+          loop: "{{ required_ports }}"
+          tags: [security]
+
+        - name: Reload UFW
+          community.general.ufw:
+            state: reloaded
+          tags: [security]
+
+    - name: Create project user and group
+      block:
+        - name: Create project group
+          ansible.builtin.group:
+            name: "{{ project_group }}"
+            state: present
+
+        - name: Create project user
+          ansible.builtin.user:
+            name: "{{ project_user }}"
+            group: "{{ project_group }}"
+            system: true
+            home: "{{ project_dir }}"
+            shell: /bin/bash
+            create_home: false
+          tags: [users]
+
+    - name: Create project directory structure
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ project_user }}"
+        group: "{{ project_group }}"
+        mode: '0755'
+      loop:
+        - "{{ project_dir }}"
+        - "{{ project_dir }}/data"
+        - "{{ project_dir }}/logs"
+        - "{{ project_dir }}/config"
+        - "{{ project_dir }}/backups"
+      tags: [directories]
+
+  roles:
+    - role: docker
+      tags: [docker]
+    
+    - role: common
+      tags: [common]
+
+  tasks:
+    - name: Clone local-ai-packaged repository
+      ansible.builtin.git:
+        repo: https://github.com/coleam00/local-ai-packaged.git
+        dest: "{{ project_dir }}/source"
+        version: stable
+        force: true
+      become_user: "{{ project_user }}"
+      tags: [git]
+
+    - name: Copy project files to working directory
+      ansible.builtin.copy:
+        src: "{{ project_dir }}/source/"
+        dest: "{{ project_dir }}/"
+        owner: "{{ project_user }}"
+        group: "{{ project_group }}"
+        mode: preserve
+        remote_src: true
+      tags: [files]
+
+    - name: Template environment file
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/local-ai-packaged.env.j2"
+        dest: "{{ project_dir }}/.env"
+        owner: "{{ project_user }}"
+        group: "{{ project_group }}"
+        mode: '0640'
+        backup: true
+      notify: restart local-ai-services
+      tags: [config]
+
+    - name: Create start services script
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/start-services.sh.j2"
+        dest: "{{ project_dir }}/start-services.sh"
+        owner: "{{ project_user }}"
+        group: "{{ project_group }}"
+        mode: '0755'
+      tags: [scripts]
+
+    - name: Create systemd service for local-ai-packaged
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/local-ai-packaged.service.j2"
+        dest: /etc/systemd/system/local-ai-packaged.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: 
+        - reload systemd
+        - restart local-ai-services
+      tags: [systemd]
+
+    - name: Ensure Docker daemon is running
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+      tags: [docker]
+
+    - name: Add project user to docker group
+      ansible.builtin.user:
+        name: "{{ project_user }}"
+        groups: docker
+        append: true
+      tags: [docker]
+
+    - name: Pull required Docker images
+      ansible.builtin.shell: |
+        cd {{ project_dir }}
+        python3 start_services.py --profile {{ gpu_profile }} --environment {{ environment_type }} --pull-only
+      become_user: "{{ project_user }}"
+      environment:
+        PATH: "/usr/local/bin:{{ ansible_env.PATH }}"
+      tags: [docker, images]
+
+    - name: Start local-ai-packaged services
+      ansible.builtin.systemd:
+        name: local-ai-packaged
+        state: started
+        enabled: true
+        daemon_reload: true
+      tags: [services]
+
+    - name: Wait for services to be ready
+      ansible.builtin.wait_for:
+        port: "{{ item }}"
+        host: localhost
+        timeout: 300
+        delay: 30
+      loop:
+        - 80   # Caddy HTTP
+        - 443  # Caddy HTTPS
+      tags: [healthcheck]
+
+    - name: Verify service endpoints
+      ansible.builtin.uri:
+        url: "https://{{ item }}"
+        method: GET
+        validate_certs: false
+        timeout: 30
+        status_code: [200, 301, 302, 403]  # Accept redirects and auth pages
+      loop:
+        - "{{ n8n_hostname }}"
+        - "{{ webui_hostname }}"
+        - "{{ supabase_hostname }}"
+        - "{{ flowise_hostname }}"
+        - "{{ langfuse_hostname }}"
+      register: endpoint_checks
+      failed_when: false
+      tags: [healthcheck]
+
+    - name: Display service status
+      ansible.builtin.debug:
+        msg: |
+          Local AI Packaged Stack Deployment Status:
+          ==========================================
+          
+          Project Directory: {{ project_dir }}
+          Environment: {{ environment_type }}
+          GPU Profile: {{ gpu_profile }}
+          
+          Service URLs:
+          - N8N: https://{{ n8n_hostname }}
+          - Open WebUI: https://{{ webui_hostname }}
+          - Supabase: https://{{ supabase_hostname }}
+          - Flowise: https://{{ flowise_hostname }}
+          - Langfuse: https://{{ langfuse_hostname }}
+          - Neo4j: https://{{ neo4j_hostname }}
+          - SearXNG: https://{{ searxng_hostname }}
+          
+          Next Steps:
+          1. Configure DNS A records for your domain
+          2. Access N8N at https://{{ n8n_hostname }} to set up workflows
+          3. Access Open WebUI at https://{{ webui_hostname }} to chat with AI
+          4. Check logs: journalctl -u local-ai-packaged -f
+      tags: [always]
+
+  handlers:
+    - name: reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: restart local-ai-services
+      ansible.builtin.systemd:
+        name: local-ai-packaged
+        state: restarted
+      when: local_ai_packaged_service is defined
+
+  post_tasks:
+    - name: Create maintenance scripts
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ project_dir }}/{{ item.dest }}"
+        owner: "{{ project_user }}"
+        group: "{{ project_group }}"
+        mode: '0755'
+      loop:
+        - src: "{{ playbook_dir }}/../templates/backup.sh.j2"
+          dest: "backup.sh"
+        - src: "{{ playbook_dir }}/../templates/update.sh.j2" 
+          dest: "update.sh"
+        - src: "{{ playbook_dir }}/../templates/logs.sh.j2"
+          dest: "logs.sh"
+      tags: [maintenance]
+
+    - name: Set up log rotation
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/local-ai-packaged.logrotate.j2"
+        dest: /etc/logrotate.d/local-ai-packaged
+        owner: root
+        group: root
+        mode: '0644'
+      tags: [logs]
+
+    - name: Create cron job for daily backups
+      ansible.builtin.cron:
+        name: "Local AI Packaged Daily Backup"
+        minute: "0"
+        hour: "2"
+        job: "{{ project_dir }}/backup.sh"
+        user: "{{ project_user }}"
+      tags: [backup]

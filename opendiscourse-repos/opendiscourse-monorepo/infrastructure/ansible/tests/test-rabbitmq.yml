@@ -1,0 +1,93 @@
+---
+- name: Test RabbitMQ installation and configuration
+  hosts: rabbitmq
+  become: yes
+  tasks:
+    - name: Check if RabbitMQ service is active
+      service:
+        name: rabbitmq-server
+        state: started
+      register: rabbitmq_service_status
+
+    - name: Assert RabbitMQ service is active
+      assert:
+        that:
+          - rabbitmq_service_status.state == 'started'
+        fail_msg: "RabbitMQ service is not active."
+        success_msg: "RabbitMQ service is active."
+
+    - name: Check if RabbitMQ configuration files exist and are not empty
+      stat:
+        path: "{{ item }}"
+      register: rabbitmq_config_files
+      loop:
+        - /etc/rabbitmq/rabbitmq-env.conf
+        - /etc/rabbitmq/rabbitmq.conf
+
+    - name: Assert RabbitMQ configuration files exist and are not empty
+      assert:
+        that:
+          - item.stat.exists
+          - item.stat.size > 0
+        fail_msg: "Configuration file {{ item.item }} is missing or empty."
+        success_msg: "Configuration file {{ item.item }} is present and not empty."
+      loop: "{{ rabbitmq_config_files.results }}"
+
+    - name: Check if RabbitMQ management API is responsive
+      uri:
+        url: http://localhost:15672/api/overview
+        user: guest
+        password: guest
+        status_code: 200
+      register: rabbitmq_api_response
+
+    - name: Assert RabbitMQ management API is responsive
+      assert:
+        that:
+          - rabbitmq_api_response.status == 200
+        fail_msg: "RabbitMQ management API is not responsive."
+        success_msg: "RabbitMQ management API is responsive."
+
+    - name: Check RabbitMQ user permissions
+      shell: rabbitmqctl list_user_permissions guest
+      register: rabbitmq_user_permissions
+
+    - name: Assert RabbitMQ user permissions
+      assert:
+        that:
+          - "'^.*\\s+\\.\\s+\\.\\s+\\.$' in rabbitmq_user_permissions.stdout"
+        fail_msg: "RabbitMQ user 'guest' does not have the correct permissions."
+        success_msg: "RabbitMQ user 'guest' has the correct permissions."
+
+    - name: Check RabbitMQ vhost configurations
+      shell: rabbitmqctl list_vhosts
+      register: rabbitmq_vhosts
+
+    - name: Assert RabbitMQ vhost configurations
+      assert:
+        that:
+          - "'/' in rabbitmq_vhosts.stdout"
+        fail_msg: "RabbitMQ vhost '/' is not configured."
+        success_msg: "RabbitMQ vhost '/' is configured."
+
+    - name: Check RabbitMQ cluster status
+      shell: rabbitmqctl cluster_status
+      register: rabbitmq_cluster_status
+
+    - name: Assert RabbitMQ cluster status
+      assert:
+        that:
+          - "'running_nodes' in rabbitmq_cluster_status.stdout"
+        fail_msg: "RabbitMQ cluster is not running."
+        success_msg: "RabbitMQ cluster is running."
+
+    - name: Check RabbitMQ queue status
+      shell: rabbitmqctl list_queues
+      register: rabbitmq_queues
+
+    - name: Assert RabbitMQ queue status
+      assert:
+        that:
+          - "'my_queue' in rabbitmq_queues.stdout"
+        fail_msg: "RabbitMQ queue 'my_queue' is not configured."
+        success_msg: "RabbitMQ queue 'my_queue' is configured."

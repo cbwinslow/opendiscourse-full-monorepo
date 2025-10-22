@@ -1,0 +1,62 @@
+---
+# Install Caddy web server
+
+- name: Set Caddy package name based on OS
+  ansible.builtin.set_fact:
+    caddy_package_name: "{{ 'caddy' if ansible_os_family == 'Debian' else 'caddy' }}"
+  tags: [caddy, install, always]
+
+- name: (Debian/Ubuntu) Add Caddy repository key
+  ansible.builtin.apt_key:
+    url: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+    state: present
+  when: ansible_os_family == 'Debian'
+  tags: [caddy, install, debian, ubuntu]
+
+- name: (Debian/Ubuntu) Add Caddy repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/caddy-stable-archive-keyring.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main"
+    state: present
+    filename: caddy-stable
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+  tags: [caddy, install, debian, ubuntu]
+
+- name: (RHEL/CentOS) Add Caddy repository
+  ansible.builtin.yum_repository:
+    name: caddy
+    description: Caddy Stable Repository
+    baseurl: https://dl.cloudsmith.io/public/caddy/stable/rpm/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/$basearch
+    enabled: true
+    gpgcheck: true
+    gpgkey: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+    repo_gpgcheck: true
+  when: ansible_os_family == 'RedHat'
+  tags: [caddy, install, rhel, centos]
+
+- name: Install Caddy package
+  ansible.builtin.package:
+    name: "{{ caddy_package_name }}"
+    state: present
+  tags: [caddy, install]
+
+- name: Ensure Caddy user and group exist
+  ansible.builtin.user:
+    name: "{{ caddy_user | default('www-data') }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+  tags: [caddy, install]
+
+- name: Ensure Caddy binary is executable
+  ansible.builtin.file:
+    path: "{{ caddy_bin_path | default('/usr/bin/caddy') }}"
+    mode: '0755'
+  tags: [caddy, install]
+
+- name: Verify Caddy installation
+  ansible.builtin.command: "{{ caddy_bin_path | default('/usr/bin/caddy') }} version"
+  register: caddy_version_check
+  changed_when: false
+  check_mode: false
+  tags: [caddy, install, verify]

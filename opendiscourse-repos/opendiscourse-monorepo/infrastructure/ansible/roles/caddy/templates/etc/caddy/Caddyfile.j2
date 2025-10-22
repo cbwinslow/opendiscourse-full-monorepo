@@ -1,0 +1,59 @@
+# Global Caddy configuration
+# Managed by Ansible - DO NOT EDIT MANUALLY
+# Last updated: {{ ansible_date_time.iso8601 }}
+
+# Global options
+{
+    # Server configuration
+    {% if caddy_global_options.admin is defined %}
+    admin {{ caddy_global_options.admin }}
+    {% endif %}
+    
+    # Logging
+    log {
+        {% if caddy_global_options.log.output is defined %}
+        output {{ caddy_global_options.log.output }}
+        {% endif %}
+        {% if caddy_global_options.log.format is defined %}
+        format {{ caddy_global_options.log.format | to_json }}
+        {% endif %}
+        {% if caddy_global_options.log.level is defined %}
+        level {{ caddy_global_options.log.level | lower }}
+        {% endif %}
+    }
+    
+    # Storage
+    {% if caddy_global_options.storage is defined %}
+    storage {{ caddy_global_options.storage }} {
+        {% if caddy_global_options.storage == 'file_system' %}
+        root {{ caddy_global_options.storage_config | default('/var/lib/caddy') }}
+        {% endif %}
+    }
+    {% endif %}
+    
+    # Auto HTTPS
+    {% if caddy_global_options.auto_https is defined %}
+    auto_https {{ caddy_global_options.auto_https }}
+    {% endif %}
+    
+    # OCSP Stapling
+    {% if caddy_global_options.ocsp_stapling is defined %}
+    ocsp_stapling {{ 'on' if caddy_global_options.ocsp_stapling else 'off' }}
+    {% endif %}
+    
+    # Servers configuration
+    {% if caddy_global_options.servers is defined and caddy_global_options.servers %}
+    servers {
+        {% for server_name, server_config in caddy_global_options.servers.items() %}
+        {{ server_name }} {
+            {% for key, value in server_config.items() %}
+            {{ key }} {{ value | to_json }}
+            {% endfor %}
+        }
+        {% endfor %}
+    }
+    {% endif %}
+}
+
+# Include site configurations
+import /etc/caddy/sites/*.caddy

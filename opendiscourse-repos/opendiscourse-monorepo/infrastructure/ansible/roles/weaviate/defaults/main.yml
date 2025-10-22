@@ -1,0 +1,18 @@
+---
+weaviate_base_dir: /opt/weaviate
+weaviate_version: "1.19.0"
+weaviate_http_port: 8080
+weaviate_grpc_port: 50051
+weaviate_data_dir: "{{ weaviate_base_dir }}/data"
+weaviate_config_dir: "{{ weaviate_base_dir }}/config"
+weaviate_user: "weaviate"
+weaviate_group: "weaviate"
+weaviate_vectorizer: "none"  # or "text2vec-transformers", "img2vec-neural", etc.
+weaviate_default_vectorizer: "none"
+weaviate_authentication_anonymous_access_enabled: true
+weaviate_persistence_data_path: "/var/lib/weaviate"
+weaviate_default_vectorizer_module: "none"
+weaviate_enable_modules: ""
+weaviate_cluster_hostname: "node1"
+weaviate_cluster_init: false
+weaviate_cluster_join: ""

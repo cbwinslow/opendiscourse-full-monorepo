@@ -1,0 +1,141 @@
+---
+# LocalAI Base Configuration
+local_ai_base_dir: /opt/local-ai
+local_ai_user: localai
+local_ai_group: localai
+local_ai_port: 8080
+local_ai_host: 0.0.0.0
+local_ai_debug: false
+local_ai_log_level: info
+
+# Docker Configuration
+local_ai_docker_network: localai_network
+local_ai_docker_restart_policy: unless-stopped
+local_ai_docker_runtime: nvidia  # Set to 'runc' for CPU-only
+
+# Model Configuration
+local_ai_models_dir: "{{ local_ai_base_dir }}/models"
+local_ai_config_dir: "{{ local_ai_base_dir }}/config"
+local_ai_data_dir: "{{ local_ai_base_dir }}/data"
+local_ai_logs_dir: "/var/log/localai"
+
+# Default Model Settings
+local_ai_default_model: gpt4all-j
+local_ai_context_size: 2048
+local_ai_threads: 4
+local_ai_batch_size: 512
+local_ai_gpu_layers: 0  # Set based on available GPU VRAM
+
+# GPU Configuration
+local_ai_gpu_enabled: false
+local_ai_gpu_device: 0  # Default GPU device ID
+local_ai_cuda_visible_devices: "0"  # Comma-separated list of GPU IDs
+
+# API Configuration
+local_ai_api_key: "{{ local_ai_secrets.api_key | default('') }}"
+local_ai_cors_enabled: true
+local_ai_cors_allowed_origins:
+  - "*"
+local_ai_rate_limit: 60  # Requests per minute
+
+# Docker Images
+local_ai_images:
+  - name: localai/localai
+    tag: latest
+    force: false
+  - name: localai/llama.cpp:latest-cuda
+    tag: latest
+    force: false
+    when: local_ai_gpu_enabled | bool
+
+# Model Download Configuration
+local_ai_download_models: true
+local_ai_models_to_download:
+  - name: gpt4all-j
+    url: "https://gpt4all.io/models/ggml-gpt4all-j-v1.3-groovy.bin"
+    filename: "ggml-gpt4all-j-v1.3-groovy.bin"
+    sha256: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+  - name: llama-2-7b
+    url: "https://huggingface.co/TheBloke/Llama-2-7B-GGML/resolve/main/llama-2-7b.ggmlv3.q4_0.bin"
+    filename: "llama-2-7b.ggmlv3.q4_0.bin"
+    sha256: ""  # Add actual SHA256 for verification
+
+# Resource Limits
+local_ai_memory_limit: "8g"
+local_ai_cpu_quota: 400000  # 400% of a single CPU core
+local_ai_shm_size: "2g"
+
+# Monitoring Configuration
+local_ai_enable_prometheus: true
+local_ai_prometheus_port: 2112
+local_ai_metrics_path: /metrics
+
+# Logging Configuration
+local_ai_log_retention_days: 30
+local_ai_configure_logrotate: true
+local_ai_logrotate_config:
+  - "{{ local_ai_logs_dir }}/*.log {"
+  - "    daily"
+  - "    missingok"
+  - "    rotate {{ local_ai_log_retention_days }}"
+  - "    compress"
+  - "    delaycompress"
+  - "    notifempty"
+  - "    create 0640 {{ local_ai_user }} {{ local_ai_group }}"
+  - "    sharedscripts"
+  - "    postrotate"
+  - "        systemctl reload local-ai > /dev/null 2>&1 || true"
+  - "    endscript"
+  - "}"
+
+# Systemd Service Configuration
+local_ai_systemd_restart_sec: 10s
+local_ai_systemd_restart: "on-failure"
+local_ai_systemd_limit_nofile: 65536
+local_ai_systemd_limit_nproc: 65536
+
+# Environment Variables
+local_ai_environment:
+  PUID: "1000"
+  PGID: "1000"
+  TZ: "America/New_York"
+  NVIDIA_VISIBLE_DEVICES: "{{ local_ai_cuda_visible_devices if local_ai_gpu_enabled else 'none' }}"
+  CUDA_VISIBLE_DEVICES: "{{ local_ai_cuda_visible_devices if local_ai_gpu_enabled else '' }}"
+
+# Advanced Configuration
+local_ai_extra_args: []
+local_ai_extra_volumes: []
+local_ai_extra_environment: {}
+
+# Security
+local_ai_api_key_enabled: true
+local_ai_bind_ip: 0.0.0.0
+local_ai_ssl_enabled: false
+local_ai_ssl_cert: ""
+local_ai_ssl_key: ""
+
+# Backup Configuration
+local_ai_backup_enabled: true
+local_ai_backup_dir: "/var/backups/localai"
+local_ai_backup_retention_days: 7
+
+# Integration with other services
+local_ai_integrations:
+  prometheus:
+    enabled: true
+    port: 2112
+    path: /metrics
+  grafana:
+    enabled: true
+    dashboard: true
+  loki:
+    enabled: true
+    url: http://loki:3100
+
+# Secrets (should be in vault)
+local_ai_secrets:
+  api_key: ""
+  openai_api_key: ""
+  anthropic_api_key: ""
+  cohere_api_key: ""
+  hf_token: ""

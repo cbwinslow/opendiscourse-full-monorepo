@@ -1,0 +1,161 @@
+---
+- name: Ensure required directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ observability_dir }}
+    - "{{ observability_dir }}/opensearch"
+    - "{{ observability_dir }}/logstash/pipeline"
+    - "{{ observability_dir }}/logstash/config"
+    - "{{ observability_dir }}/filebeat"
+    - "{{ observability_dir }}/vector-bridge/vector_bridge"
+    - "{{ observability_dir }}/grafana/provisioning/dashboards"
+    - "{{ observability_dir }}/grafana/provisioning/datasources"
+    - "{{ observability_dir }}/grafana/dashboards"
+
+- name: Deploy OLK stack docker-compose file
+  template:
+    src: "docker-compose-olk.yml.j2"
+    dest: "{{ observability_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Deploy Logstash configuration
+  template:
+    src: "logstash/pipeline/logstash.conf.j2"
+    dest: "{{ observability_dir }}/logstash/pipeline/logstash.conf"
+    mode: '0644'
+
+- name: Deploy Filebeat configuration
+  template:
+    src: "filebeat/filebeat.yml.j2"
+    dest: "{{ observability_dir }}/filebeat/filebeat.yml"
+    mode: '0644'
+
+- name: Deploy Vector Bridge service
+  template:
+    src: "vector-bridge/Dockerfile.j2"
+    dest: "{{ observability_dir }}/vector-bridge/Dockerfile"
+    mode: '0644'
+  register: vector_bridge_dockerfile
+
+- name: Deploy Vector Bridge requirements
+  template:
+    src: "vector-bridge/requirements.txt.j2"
+    dest: "{{ observability_dir }}/vector-bridge/requirements.txt"
+    mode: '0644'
+
+- name: Deploy Vector Bridge main application
+  template:
+    src: "vector-bridge/vector_bridge/main.py.j2"
+    dest: "{{ observability_dir }}/vector-bridge/vector_bridge/main.py"
+    mode: '0644'
+
+- name: Deploy Grafana dashboards
+  template:
+    src: "grafana/dashboards/{{ item }}"
+    dest: "{{ observability_dir }}/grafana/dashboards/{{ item }}"
+    mode: '0644'
+  loop: "{{ lookup('fileglob', 'grafana/dashboards/*.json', wantlist=True) }}"
+  when: "'grafana/dashboards/' in item"
+
+- name: Deploy Grafana provisioning
+  template:
+    src: "grafana/provisioning/{{ item }}"
+    dest: "{{ observability_dir }}/grafana/provisioning/{{ item }}"
+    mode: '0644'
+  loop: "{{ lookup('fileglob', 'grafana/provisioning/*/*', wantlist=True) }}"
+  when: "'grafana/provisioning/' in item"
+
+- name: Create PostgreSQL initialization script
+  template:
+    src: "postgresql/initdb/01-init.sql.j2"
+    dest: "{{ observability_dir }}/postgresql/initdb/01-init.sql"
+    mode: '0644'
+
+- name: Create Qdrant collection configuration
+  template:
+    src: "qdrant/collections/logs.json.j2"
+    dest: "{{ observability_dir }}/qdrant/collections/logs.json"
+    mode: '0644'
+
+- name: Pull Docker images
+  docker_compose:
+    project_src: "{{ observability_dir }}"
+    pull: yes
+    build: yes
+    remove_orphans: yes
+
+- name: Start OLK stack
+  docker_compose:
+    project_src: "{{ observability_dir }}"
+    state: present
+    stopped: no
+    restarted: yes
+    remove_orphans: yes
+    recreate: always
+    build: yes
+
+- name: Ensure services are running
+  systemd:
+    name: "docker-compose@{{ observability_service_name }}"
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  register: service_status
+
+- name: Verify OLK stack health
+  uri:
+    url: "http://localhost:9200/_cluster/health"
+    method: GET
+    return_content: yes
+    status_code: 200
+    timeout: 30
+  register: opensearch_health
+  until: opensearch_health.status == 200
+  retries: 10
+  delay: 10
+  when: service_status is changed
+
+- name: Create Qdrant collection if not exists
+  uri:
+    url: "http://localhost:6333/collections/logs"
+    method: GET
+    status_code: 200,404
+    return_content: yes
+  register: qdrant_collection
+  retries: 5
+  delay: 5
+  until: qdrant_collection.status != -1
+
+- name: Initialize Qdrant collection
+  uri:
+    url: "http://localhost:6333/collections/logs"
+    method: PUT
+    body_format: json
+    body: "{{ lookup('file', observability_dir + '/qdrant/collections/logs.json') | from_json }}"
+    status_code: 200
+  when: qdrant_collection.status == 404
+  register: qdrant_init
+  retries: 3
+  delay: 5
+  until: qdrant_init is not failed
+
+- name: Initialize PostgreSQL database
+  postgresql_db:
+    name: "{{ postgres_db }}"
+    state: present
+    port: "{{ postgres_port }}"
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+  when: postgres_init | default(false)
+
+- name: Load PostgreSQL initialization script
+  postgresql_query:
+    db: "{{ postgres_db }}"
+    port: "{{ postgres_port }}"
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    query_from_file: "{{ observability_dir }}/postgresql/initdb/01-init.sql"
+  when: postgres_init | default(false)

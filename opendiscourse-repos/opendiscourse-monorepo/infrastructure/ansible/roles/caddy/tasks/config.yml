@@ -1,0 +1,72 @@
+---
+# Configure Caddy web server
+
+- name: Validate Caddy configuration
+  ansible.builtin.assert:
+    that:
+      - "caddy_user is defined and caddy_user | length > 0"
+      - "caddy_group is defined and caddy_group | length > 0"
+      - "caddy_log_dir is defined and caddy_log_dir | length > 0"
+    success_msg: "Caddy configuration validation passed"
+    fail_msg: "Missing required Caddy configuration variables"
+  tags: [caddy, config, validate]
+
+- name: Create Caddy configuration directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(caddy_user) }}"
+    group: "{{ item.group | default(caddy_group) }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - { path: "/etc/caddy", owner: "root", mode: "0755" }
+    - { path: "/etc/caddy/sites", owner: "root", mode: "0750" }
+    - { path: "/etc/caddy/snippets", owner: "root", mode: "0750" }
+    - { path: "{{ caddy_log_dir }}", owner: "{{ caddy_user }}", mode: "0750" }
+    - { path: "/var/lib/caddy", owner: "{{ caddy_user }}", mode: "0750" }
+  tags: [caddy, config]
+
+- name: Deploy main Caddyfile
+  ansible.builtin.template:
+    src: etc/caddy/Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: '0640'
+    validate: "{{ caddy_bin_path | default('/usr/bin/caddy') }} validate --config %s"
+  notify: 
+    - restart caddy
+  register: caddyfile_changed
+  tags: [caddy, config]
+
+- name: Deploy site configurations
+  ansible.builtin.template:
+    src: "etc/caddy/sites/{{ item.name }}.caddy.j2"
+    dest: "/etc/caddy/sites/{{ item.name }}.caddy"
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: '0640'
+    validate: "{{ caddy_bin_path | default('/usr/bin/caddy') }} validate --config /etc/caddy/Caddyfile --adapter caddyfile"
+  loop: "{{ caddy_sites }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: 
+    - restart caddy
+  when: caddy_sites is defined and caddy_sites | length > 0
+  register: caddy_sites_changed
+  tags: [caddy, config, sites]
+  retries: 3
+  delay: 5
+  until: caddy_sites_changed is succeeded
+
+- name: Deploy global snippets
+  ansible.builtin.template:
+    src: "etc/caddy/snippets/{{ item.name }}.j2"
+    dest: "/etc/caddy/snippets/{{ item.name }}"
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: '0640'
+  loop: "{{ caddy_snippets | default([]) | json_query('[] | []') }}"
+  when: caddy_snippets is defined and caddy_snippets | length > 0
+  notify: reload caddy
+  tags: [caddy, config, snippets]

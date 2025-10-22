@@ -1,0 +1,208 @@
+---
+- name: Install monitoring prerequisites
+  apt:
+    name:
+      - prometheus
+      - grafana
+      - loki
+      - promtail
+      - opensearch
+      - graylog-server
+      - graylog-web
+    state: present
+
+- name: Configure Prometheus
+  block:
+    - name: Create Prometheus directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/prometheus
+        - /var/lib/prometheus
+        - /var/log/prometheus
+
+    - name: Configure Prometheus
+      template:
+        src: prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+        mode: '0644'
+
+    - name: Start and enable Prometheus
+      systemd:
+        name: prometheus
+        enabled: yes
+        state: started
+
+  when: prometheus_enabled
+
+- name: Configure Grafana
+  block:
+    - name: Create Grafana directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/grafana
+        - /var/lib/grafana
+        - /var/log/grafana
+
+    - name: Configure Grafana
+      template:
+        src: grafana.ini.j2
+        dest: /etc/grafana/grafana.ini
+        mode: '0644'
+
+    - name: Configure Grafana datasources
+      template:
+        src: prometheus-datasource.yml.j2
+        dest: /etc/grafana/provisioning/datasources/prometheus.yml
+        mode: '0644'
+
+    - name: Configure Grafana dashboards
+      template:
+        src: monitoring-dashboard.json.j2
+        dest: /etc/grafana/provisioning/dashboards/monitoring.json
+        mode: '0644'
+
+    - name: Start and enable Grafana
+      systemd:
+        name: grafana-server
+        enabled: yes
+        state: started
+
+  when: grafana_enabled
+
+- name: Configure Loki
+  block:
+    - name: Create Loki directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/loki
+        - /var/lib/loki
+        - /var/log/loki
+
+    - name: Configure Loki
+      template:
+        src: loki-config.yml.j2
+        dest: /etc/loki/loki-config.yml
+        mode: '0644'
+
+    - name: Start and enable Loki
+      systemd:
+        name: loki
+        enabled: yes
+        state: started
+
+  when: loki_enabled
+
+- name: Configure Promtail
+  block:
+    - name: Create Promtail directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/promtail
+        - /var/lib/promtail
+        - /var/log/promtail
+
+    - name: Configure Promtail
+      template:
+        src: promtail-config.yml.j2
+        dest: /etc/promtail/promtail-config.yml
+        mode: '0644'
+
+    - name: Start and enable Promtail
+      systemd:
+        name: promtail
+        enabled: yes
+        state: started
+
+  when: promtail_enabled
+
+- name: Configure OpenSearch
+  block:
+    - name: Create OpenSearch directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/opensearch
+        - /var/lib/opensearch
+        - /var/log/opensearch
+
+    - name: Configure OpenSearch
+      template:
+        src: opensearch.yml.j2
+        dest: /etc/opensearch/opensearch.yml
+        mode: '0644'
+
+    - name: Start and enable OpenSearch
+      systemd:
+        name: opensearch
+        enabled: yes
+        state: started
+
+  when: opensearch_enabled
+
+- name: Configure Graylog
+  block:
+    - name: Create Graylog directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/graylog
+        - /var/lib/graylog
+        - /var/log/graylog
+
+    - name: Configure Graylog server
+      template:
+        src: graylog-server.conf.j2
+        dest: /etc/graylog/server/graylog-server.conf
+        mode: '0644'
+
+    - name: Configure Graylog web
+      template:
+        src: graylog-web.conf.j2
+        dest: /etc/graylog/web/graylog-web.conf
+        mode: '0644'
+
+    - name: Start and enable Graylog
+      systemd:
+        name: graylog-server
+        enabled: yes
+        state: started
+
+    - name: Start and enable Graylog web
+      systemd:
+        name: graylog-web
+        enabled: yes
+        state: started
+
+  when: graylog_enabled
+
+- name: Configure monitoring alerts
+  block:
+    - name: Create alert rules
+      template:
+        src: alert.rules.j2
+        dest: /etc/prometheus/alert.rules
+        mode: '0644'
+
+    - name: Configure alertmanager
+      template:
+        src: alertmanager.yml.j2
+        dest: /etc/prometheus/alertmanager.yml
+        mode: '0644'
+
+  when: alerts_enabled

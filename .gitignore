@@ -1,232 +1,169 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
-# Virtual environments
+env/
 venv/
 .venv/
-ENV/
-build/
-dist/
-*.egg-info/
-*.egg
-*.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.gitlab-ci.yml
 .pytest_cache/
-.mypy_cache/
-.ruff
 
-# Environment variables
+# Build outputs
+dist/
+build/
+*.egg-info/
+.nyc_output
+coverage/
+lib-cov
+
+# Environment
 .env
 .env.local
-.env.*.local
-*.env
-
-# Database
-*.sqlite3
-*.db
-*.sql
-*.dump
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging.local
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
 
-# Logs
-*.log
-logs/
+# OS
+.DS_Store
+Thumbs.db
 
-# Temporary files and generated content
-DIFF_*.md
-RECOMMENDATIONS_*.md
-ARCHIVE_*.md
-.delete_these_files.txt
-*_backup_*.tar.gz
+# Database
+*.db
+*.db-journal
+
+# Secrets
+secrets/
+config/secrets/
+credentials.json
+service-account-key.json
+
+# Local development
+.local/
+.temp/
+tmp/
+
+# Backup files
+*.bak
 *.backup
+*~
+.#*
 
-# Frontend build output and dependencies
-node_modules/
+# Ignore specific files that should not be committed
+docker-compose.override.yml
+docker-compose.prod.yml
+
+# Logs
+logs/
+*.log
+
+# Processed data
+data/processed/
+data/tmp/
+
+# Temporary files
+*.tmp
+tmp/
+temp/
+
+# Ignore backup created earlier
+local_work_backup/
+opendiscourse_backup_*.tar.gz
+
+# Python specific
+.hypothesis/
+.pyre/
+.pytype/
+cython_debug/
+*.so
+
+# Frontend specific
 .next/
 .nuxt/
 dist/
-build/
-*.tsbuildinfo
+.out/
+.output/
+.svelte-kit/
+vercel.json
+netlify.toml
 
-# Pre-commit
-.pre-commit-config.yaml
+# Go specific (if needed)
+vendor/
+go.sum
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
 
-# Ruff
-.ruff_cache/
-
-# Black
-.pyc
-.python-version
-
-# Misc
+# Tools and IDEs
+.settings/
+.project
+.classpath
+*.launch
 .DS_Store
-*.pem
+.directory
+nbproject/
+*.sw?
+*~
+#*#
+.\#*
+,*
+ _$*
+ *$
+ *.bak
+ *.BAK
+ *.bakup
+ *.backup
+ *.tmp
+ *.temp
+ *.original
+ *.orig
+ *~
 
-# Project specific
-*.lock
-*.pyc
-*.swp
-.buildlog/
-.history
+# Temporary folders
+tmp/
+.temp/
 
-# Docker
-.docker/
-.dockerignore
-Dockerfile
+# Package manager specific
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
 
-# Service files
-*.service
-*.sh
-
-# API and database setup files
-setup-api.sh
-setup-postgres.sh
-setup-vectordb.sh
-
-# Test files
-test_setup.sh
-
-# Requirements files
-requirements-vectordb.txt
-
-
-
-# Flutter repo-specific
-/bin/cache/
-/bin/internal/bootstrap.bat
-/bin/internal/bootstrap.sh
-/bin/mingit/
-/dev/benchmarks/mega_gallery/
-/dev/bots/.recipe_deps
-/dev/bots/android_tools/
-/dev/devicelab/ABresults*.json
-/dev/docs/doc/
-/dev/docs/flutter.docs.zip
-/dev/docs/lib/
-/dev/docs/pubspec.yaml
-/dev/integration_tests/**/xcuserdata
-/dev/integration_tests/**/Pods
-/packages/flutter/coverage/
-version
-analysis_benchmark.json
-
-# packages file containing multi-root paths
-.packages.generated
-
-# Flutter/Dart/Pub related
-**/doc/api/
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-**/generated_plugin_registrant.dart
-.packages
-.pub-preload-cache/
-.pub/
-build/
-flutter_*.png
-linked_*.ds
-unlinked.ds
-unlinked_spec.ds
-
-# Android related
-**/android/**/gradle-wrapper.jar
-.gradle/
-**/android/captures/
-**/android/gradlew
-**/android/gradlew.bat
-**/android/local.properties
-**/android/**/GeneratedPluginRegistrant.java
-**/android/key.properties
-*.jks
-
-# iOS/XCode related
-**/ios/**/*.mode1v3
-**/ios/**/*.mode2v3
-**/ios/**/*.moved-aside
-**/ios/**/*.pbxuser
-**/ios/**/*.perspectivev3
-**/ios/**/*sync/
-**/ios/**/.sconsign.dblite
-**/ios/**/.tags*
-**/ios/**/.vagrant/
-**/ios/**/DerivedData/
-**/ios/**/Icon?
-**/ios/**/Pods/
-**/ios/**/.symlinks/
-**/ios/**/profile
-**/ios/**/xcuserdata
-**/ios/.generated/
-**/ios/Flutter/.last_build_id
-**/ios/Flutter/App.framework
-**/ios/Flutter/Flutter.framework
-**/ios/Flutter/Flutter.podspec
-**/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/ephemeral
-**/ios/Flutter/app.flx
-**/ios/Flutter/app.zip
-**/ios/Flutter/flutter_assets/
-**/ios/Flutter/flutter_export_environment.sh
-**/ios/ServiceDefinitions.json
-**/ios/Runner/GeneratedPluginRegistrant.*
-
-# macOS
-**/Flutter/ephemeral/
-**/Pods/
-**/macos/Flutter/GeneratedPluginRegistrant.swift
-**/macos/Flutter/ephemeral
-**/xcuserdata/
-
-# Windows
-**/windows/flutter/generated_plugin_registrant.cc
-**/windows/flutter/generated_plugin_registrant.h
-**/windows/flutter/generated_plugins.cmake
-
-# Linux
-**/linux/flutter/generated_plugin_registrant.cc
-**/linux/flutter/generated_plugin_registrant.h
-**/linux/flutter/generated_plugins.cmake
-
-# Coverage
-coverage/
-
-# Symbols
-app.*.symbols
-
-# Exceptions to above rules.
-!**/ios/**/default.mode1v3
-!**/ios/**/default.mode2v3
-!**/ios/**/default.pbxuser
-!**/ios/**/default.perspectivev3
-!/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
-!/dev/ci/**/Gemfile.lock
-# Embedded repositories and large directories
-frontend/
-langchain/
-node_modules/
-
-# Backup files and large archives
-*.tar.gz
-*.zip
-*_backup_*
-opendiscourse_backup_*
-
-# Vector database and data directories
-chroma_db/
-data/
-temp/
-
-# Backup and temporary directories
-*-backup/
-*-temp/
-dimensional-debris/
-opendiscourse-*/
-
-.cpqdevkit/**.next/
+# Don't ignore important directories that are part of the monorepo
+!packages/
+!apps/
+!tools/
+!docs/
+!src/
+!tests/
+!scripts/
+!config/
+!migrations/
+!data/
+!web/
+!api/

@@ -1,0 +1,209 @@
+---
+# ====================================
+# Site-Wide Deployment Playbook
+# Ansible managed - do not edit manually
+# ====================================
+
+# Base System Configuration
+- name: Configure base system and security
+  hosts: all
+  become: true
+  tags: [base, security]
+  roles:
+    - { role: common, tags: ['common'] }
+    - { role: security, tags: ['security'] }
+    - { role: docker, tags: ['docker'] }
+    - { role: fail2ban, tags: ['security'] }
+    - { role: firewall, tags: ['security'] }
+
+# Monitoring & Observability Stack
+- name: Deploy monitoring and observability
+  hosts: monitoring
+  become: true
+  tags: [monitoring, observability]
+  roles:
+    - { role: prometheus, tags: ['monitoring'] }
+    - { role: grafana, tags: ['monitoring', 'visualization'] }
+    - { role: loki, tags: ['logging'] }
+    - { role: promtail, tags: ['logging'] }
+    - { role: netdata, tags: ['monitoring'] }
+    - { role: alertmanager, tags: ['alerting'] }
+    - { role: blackbox_exporter, tags: ['monitoring'] }
+    - { role: node_exporter, tags: ['monitoring'] }
+
+# Database Services
+- name: Deploy database infrastructure
+  hosts: databases
+  become: true
+  tags: [databases]
+  roles:
+    - { role: postgresql, tags: ['database', 'postgresql'] }
+    - { role: neo4j, tags: ['database', 'graph'] }
+    - { role: weaviate, tags: ['database', 'vector'] }
+    - { role: opensearch, tags: ['database', 'search'] }
+    - { role: redis, tags: ['database', 'cache'] }
+    - { role: rabbitmq, tags: ['messaging'] }
+
+# AI & ML Services
+- name: Deploy AI/ML infrastructure
+  hosts: ai
+  become: true
+  tags: [ai, ml]
+  roles:
+    - { role: local-ai, tags: ['ai', 'inference'] }
+    - { role: agentic-rag, tags: ['ai', 'rag'] }
+    - { role: langchain, tags: ['ai', 'llm'] }
+    - { role: openrouter, tags: ['ai', 'llm'] }
+    - { role: ai-orchestrator, tags: ['ai', 'orchestration'] }
+    - { role: ai-agents, tags: ['ai', 'agents'] }
+
+# Web & API Services
+- name: Deploy web and API services
+  hosts: web
+  become: true
+  tags: [web, api]
+  roles:
+    - { role: nginx, tags: ['web', 'reverse-proxy'] }
+    - { role: traefik, tags: ['web', 'reverse-proxy'] }
+    - { role: caddy, tags: ['web', 'reverse-proxy'] }
+    - { role: fastapi, tags: ['api'] }
+    - { role: oauth2-proxy, tags: ['auth'] }
+    - { role: jwt, tags: ['auth'] }
+
+# Logging & Analytics
+- name: Deploy logging and analytics
+  hosts: logging
+  become: true
+  tags: [logging, analytics]
+  roles:
+    - { role: graylog, tags: ['logging'] }
+    - { role: opensearch-dashboards, tags: ['analytics'] }
+    - { role: fluentd, tags: ['logging'] }
+    - { role: filebeat, tags: ['logging'] }
+
+# Message Queue & Event Bus
+- name: Deploy messaging infrastructure
+  hosts: messaging
+  become: true
+  tags: [messaging]
+  roles:
+    - { role: rabbitmq, tags: ['message-queue'] }
+    - { role: rabbitmq-management, tags: ['monitoring'] }
+    - { role: rabbitmq-auth-backend-http, tags: ['security'] }
+
+# AI Agent System
+- name: Deploy AI agent system
+  hosts: agents
+  become: true
+  tags: [ai-agents]
+  roles:
+    - { role: ai-agent-base, tags: ['ai', 'agents'] }
+    - { role: ai-agent-healing, tags: ['ai', 'self-healing'] }
+    - { role: ai-agent-optimization, tags: ['ai', 'optimization'] }
+    - { role: ai-agent-backup, tags: ['ai', 'backup'] }
+    - { role: ai-agent-monitoring, tags: ['ai', 'monitoring'] }
+
+# Final Configuration & Validation
+- name: Final system configuration and validation
+  hosts: all
+  become: true
+  tags: [validation, final]
+  tasks:
+    - name: Verify service health
+      ansible.builtin.shell: |
+        systemctl is-active {{ item }}
+      loop:
+        - docker
+        - nginx
+        - traefik
+        - rabbitmq-server
+        - prometheus
+        - grafana-server
+      register: service_status
+      ignore_errors: true
+      changed_when: false
+
+    - name: Display service status
+      ansible.builtin.debug:
+        var: service_status
+
+    - name: Verify network connectivity between services
+      ansible.builtin.wait_for:
+        port: "{{ item.port }}"
+        host: "{{ item.host }}"
+        timeout: 5
+      loop:
+        - { port: 80, host: "localhost" }
+        - { port: 443, host: "localhost" }
+        - { port: 9090, host: "localhost" }  # Prometheus
+        - { port: 3000, host: "localhost" }  # Grafana
+        - port: 15672
+          host: "localhost"  # RabbitMQ Management
+      delegate_to: localhost
+      become: false
+      ignore_errors: true
+
+# Post-Deployment Configuration
+- name: Configure service integrations
+  hosts: localhost
+  connection: local
+  become: false
+  tags: [integration]
+  tasks:
+    - name: Import Grafana dashboards
+      community.grafana.dashboard:
+        grafana_url: "https://{{ grafana_host }}"
+        url_username: "{{ grafana_admin_user }}"
+        url_password: "{{ grafana_admin_password }}"
+        state: present
+        overwrite: true
+        path: "{{ playbook_dir }}/../grafana/dashboards/"
+      register: grafana_dashboards
+      when: grafana_import_dashboards | bool
+
+    - name: Configure Prometheus targets
+      ansible.builtin.template:
+        src: "prometheus/targets.yml.j2"
+        dest: "/etc/prometheus/targets.yml"
+        owner: prometheus
+        group: prometheus
+        mode: '0644'
+      notify: restart prometheus
+
+    - name: Configure RabbitMQ users and permissions
+      community.rabbitmq.user:
+        user: "{{ item.user }}"
+        password: "{{ item.password }}"
+        vhost: "{{ item.vhost | default('/') }}"
+        configure_priv: "{{ item.configure_priv | default('.*') }}"
+        read_priv: "{{ item.read_priv | default('.*') }}"
+        write_priv: "{{ item.write_priv | default('.*') }}"
+        tags: "{{ item.tags | default('management') }}"
+        state: present
+      loop: "{{ rabbitmq_users }}"
+      no_log: true
+
+# Final System Check
+- name: Run system validation
+  hosts: all
+  become: true
+  tags: [validation]
+  tasks:
+    - name: Check disk space
+      ansible.builtin.shell: df -h /
+      register: disk_space
+      changed_when: false
+
+    - name: Check memory usage
+      ansible.builtin.shell: free -m
+      register: memory_usage
+      changed_when: false
+
+    - name: Display system status
+      ansible.builtin.debug:
+        msg: |
+          Disk Space:
+          {{ disk_space.stdout_lines | to_nice_json }}
+          
+          Memory Usage:
+          {{ memory_usage.stdout_lines | to_nice_json }}

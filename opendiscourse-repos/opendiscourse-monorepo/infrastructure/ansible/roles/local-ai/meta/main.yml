@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: Your Name
+  description: LocalAI role for deploying and managing LocalAI service
+  company: Your Company
+  license: Proprietary
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+  galaxy_tags:
+    - localai
+    - ai
+    - llm
+
+dependencies:
+  - { role: common }
+  - { role: docker }

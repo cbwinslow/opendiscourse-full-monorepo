@@ -1,0 +1,27 @@
+{
+  "logging": {
+    "logs": {
+      "default": {
+        "level": "{{ caddy_logging.level | default('INFO') }}",
+        "encoder": {
+          "format": "json",
+          "message_key": "message",
+          "level_key": "level",
+          "time_key": "time",
+          "time_format": "iso8601",
+          "duration_format": "seconds",
+          "level_format": "lower"
+        },
+        "writer": {
+          "output": "file",
+          "filename": "{{ caddy_logging.output | default('/var/log/caddy/access.log') }}",
+          "when": "daily",
+          "compress": {{ 'true' if caddy_logging.rotation.compress | default(true) else 'false' }},
+          "max_size": {{ caddy_logging.rotation.max_size | default(100) }},
+          "max_age": {{ caddy_logging.rotation.max_age | default(7) }},
+          "max_backups": {{ caddy_logging.rotation.max_backups | default(10) }}
+        }
+      }
+    }
+  }
+}

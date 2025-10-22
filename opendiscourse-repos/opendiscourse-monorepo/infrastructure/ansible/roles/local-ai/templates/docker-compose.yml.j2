@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  localai:
+    image: {{ local_ai_images[0].name }}:{{ local_ai_images[0].tag }}
+    container_name: localai
+    restart: {{ local_ai_docker_restart_policy }}
+    runtime: {{ local_ai_docker_runtime if local_ai_gpu_enabled else 'runc' }}
+    ports:
+      - "{{ local_ai_bind_ip }}:{{ local_ai_port }}:8080"
+      {% if local_ai_integrations.prometheus.enabled %}
+      - "{{ local_ai_integrations.prometheus.port }}:{{ local_ai_integrations.prometheus.port }}"
+      {% endif %}
+    environment:
+      - DEBUG={{ local_ai_debug | lower }}
+      - MODELS_PATH=/models
+      - THREADS={{ local_ai_threads }}
+      - CONTEXT_SIZE={{ local_ai_context_size }}
+      - BATCH_SIZE={{ local_ai_batch_size }}
+      - GPU_LAYERS={{ local_ai_gpu_layers if local_ai_gpu_enabled else 0 }}
+      - GPU_DEVICE={{ local_ai_gpu_device }}
+      - CUDA_VISIBLE_DEVICES={{ local_ai_cuda_visible_devices if local_ai_gpu_enabled else '' }}
+      - API_KEY={{ local_ai_api_key if local_ai_api_key_enabled else '' }}
+      - CORS={{ local_ai_cors_enabled | lower }}
+      - CORS_ALLOW_ORIGINS={{ local_ai_cors_allowed_origins | join(',') }}
+      - LOG_LEVEL={{ local_ai_log_level }}
+      - DEFAULT_MODEL={{ local_ai_default_model }}
+      - METRICS_PORT={{ local_ai_integrations.prometheus.port if local_ai_integrations.prometheus.enabled else '' }}
+      - METRICS_PATH={{ local_ai_metrics_path if local_ai_integrations.prometheus.enabled else '' }}
+      - LOKI_URL={{ local_ai_integrations.loki.url if local_ai_integrations.loki.enabled else '' }}
+      - OPENAI_API_KEY={{ local_ai_secrets.openai_api_key | default('') }}
+      - ANTHROPIC_API_KEY={{ local_ai_secrets.anthropic_api_key | default('') }}
+      - COHERE_API_KEY={{ local_ai_secrets.cohere_api_key | default('') }}
+      - HF_TOKEN={{ local_ai_secrets.hf_token | default('') }}
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      {% for key, value in local_ai_extra_environment.items() %}
+      - {{ key }}={{ value }}
+      {% endfor %}
+    volumes:
+      - {{ local_ai_models_dir }}:/models
+      - {{ local_ai_config_dir }}:/config
+      - {{ local_ai_data_dir }}:/data
+      - {{ local_ai_logs_dir }}:/var/log/localai
+      - /etc/localtime:/etc/localtime:ro
+      {% if local_ai_ssl_enabled and local_ai_ssl_cert and local_ai_ssl_key %}
+      - {{ local_ai_ssl_cert }}:/ssl/cert.pem:ro
+      - {{ local_ai_ssl_key }}:/ssl/key.pem:ro
+      {% endif %}
+      {% for volume in local_ai_extra_volumes %}
+      - {{ volume }}
+      {% endfor %}
+    shm_size: {{ local_ai_shm_size }}
+    deploy:
+      resources:
+        limits:
+          cpus: '{{ local_ai_cpu_quota / 100000.0 }}'
+          memory: {{ local_ai_memory_limit }}
+        reservations:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    {% if local_ai_extra_args %}
+    command: 
+      {% for arg in local_ai_extra_args %}
+      - "{{ arg }}"
+      {% endfor %}
+    {% endif %}
+
+networks:
+  default:
+    name: {{ local_ai_docker_network }}
+    driver: bridge

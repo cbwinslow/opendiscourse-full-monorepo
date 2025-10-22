@@ -1,0 +1,29 @@
+[Unit]
+Description=Weaviate Vector Search Engine
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User={{ weaviate_user }}
+Group={{ weaviate_group }}
+EnvironmentFile=-/etc/default/weaviate
+ExecStartPre=-/usr/bin/docker pull semitechnologies/weaviate:{{ weaviate_version }}
+ExecStart=/usr/bin/docker run \
+  --name weaviate \
+  --rm \
+  -p {{ weaviate_http_port }}:8080 \
+  -p {{ weaviate_grpc_port }}:50051 \
+  -v {{ weaviate_data_dir }}:/var/lib/weaviate \
+  -v {{ weaviate_config_dir }}/weaviate-config.json:/weaviate-config.json \
+  semitechnologies/weaviate:{{ weaviate_version }} \
+  --host 0.0.0.0 \
+  --port {{ weaviate_http_port }} \
+  --scheme http \
+  --config-file /weaviate-config.json
+Restart=always
+RestartSec=5s
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

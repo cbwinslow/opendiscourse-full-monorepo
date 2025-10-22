@@ -1,0 +1,132 @@
+---
+# RabbitMQ Default Variables
+
+# Service Configuration
+rabbitmq_service_name: rabbitmq-server
+rabbitmq_service_state: started
+rabbitmq_service_enabled: true
+
+# Network Configuration
+rabbitmq_tcp_port: 5672
+rabbitmq_management_port: 15672
+rabbitmq_management_bind_ip: '0.0.0.0'
+rabbitmq_management_path: /api
+rabbitmq_management_ssl: false
+
+# SSL Configuration
+rabbitmq_ssl_enabled: false
+rabbitmq_ssl_port: 5671
+rabbitmq_ssl_ca_cert: /etc/rabbitmq/ssl/ca_certificate.pem
+rabbitmq_ssl_cert: /etc/rabbitmq/ssl/{{ ansible_fqdn }}.pem
+rabbitmq_ssl_key: /etc/rabbitmq/ssl/{{ ansible_fqdn }}-key.pem
+rabbitmq_ssl_verify: verify_peer
+rabbitmq_ssl_fail_if_no_peer_cert: true
+
+# Authentication
+rabbitmq_default_user: guest
+rabbitmq_default_pass: guest
+rabbitmq_default_vhost: /
+rabbitmq_allow_guest: false
+
+# Plugins to enable
+rabbitmq_plugins:
+  - rabbitmq_management
+  - rabbitmq_management_agent
+  - rabbitmq_mqtt
+  - rabbitmq_stomp
+  - rabbitmq_web_stomp
+  - rabbitmq_amqp1_0
+  - rabbitmq_shovel
+  - rabbitmq_shovel_management
+  - rabbitmq_prometheus
+
+# Default users, vhosts, and permissions
+rabbitmq_users: []
+# Example:
+# - user: admin
+#   password: changeme
+#   vhost: /
+#   configure_priv: '.*'
+#   write_priv: '.*'
+#   read_priv: '.*'
+#   tags: administrator
+
+rabbitmq_vhosts:
+  - /
+  - /ai
+  - /monitoring
+  - /orchestrator
+
+# Policies
+rabbitmq_policies: []
+# Example:
+# - name: ha-policy
+#   pattern: '^ha\..*'
+#   definition:
+#     ha-mode: all
+#     ha-sync-mode: automatic
+#   priority: 0
+#   apply-to: all
+
+# Resource Limits
+rabbitmq_memory_high_watermark: 0.4
+rabbitmq_disk_free_limit: '2GB'
+rabbitmq_vm_memory_high_watermark: 0.4
+rabbitmq_vm_memory_high_watermark_paging_ratio: 0.5
+rabbitmq_total_memory_available: '4GB'
+
+# Performance Tuning
+rabbitmq_nofile_limit: 65536
+rabbitmq_hipe_compile: false
+rabbitmq_queue_index_embed_msgs_below: 4096
+rabbitmq_queue_index_max_journal_entries: 65536
+rabbitmq_channel_max: 2047
+rabbitmq_heartbeat: 60
+rabbitmq_max_connections: 1000
+rabbitmq_max_channels: 128
+
+# Logging
+rabbitmq_log_level: info
+rabbitmq_log_console: true
+rabbitmq_log_file: /var/log/rabbitmq/rabbit.log
+rabbitmq_log_exchange: true
+rabbitmq_log_exchange_level: info
+
+# Cluster Settings
+rabbitmq_cluster_name: 'rabbit@{{ inventory_hostname }}'
+rabbitmq_cluster_nodes: []
+rabbitmq_cluster_keepalive_interval: 10000
+rabbitmq_cluster_partition_handling: ignore
+
+# Prometheus Metrics
+rabbitmq_prometheus_enabled: true
+rabbitmq_prometheus_port: 15692
+rabbitmq_prometheus_bind_ip: '0.0.0.0'
+
+# LDAP Configuration
+rabbitmq_ldap_enabled: false
+rabbitmq_ldap_server: 'ldap://ldap.example.com'
+rabbitmq_ldap_port: 389
+rabbitmq_ldap_user_dn_pattern: 'cn=${username},ou=users,dc=example,dc=com'
+rabbitmq_ldap_use_ssl: false
+rabbitmq_ldap_ca_cert: /etc/ssl/certs/ldap-ca.pem
+
+# Custom Configuration
+rabbitmq_custom_config: {}
+# Example:
+#   log.console.level: debug
+#   log.file.level: info
+
+# Environment Variables
+rabbitmq_environment: {}
+# Example:
+#   RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+P 1048576 +t 1000000"
+#   RABBITMQ_CTL_ERL_ARGS: "+P 1048576"
+
+# Package Management
+rabbitmq_package_state: present
+rabbitmq_repository: 'https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/deb/ubuntu'
+rabbitmq_repository_key: 'https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/gpg.E495BB49CC4BBE5B.key'
+rabbitmq_repository_key_id: '0A9AF2115F4687BD29803A206B73A36E6026DFCA'
+rabbitmq_repository_release: 'focal'  # Will be overridden by ansible_distribution_release
+rabbitmq_repository_components: 'main'

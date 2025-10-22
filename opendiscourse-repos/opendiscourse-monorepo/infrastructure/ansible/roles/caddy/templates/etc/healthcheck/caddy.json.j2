@@ -1,0 +1,45 @@
+{
+  "checks": [
+    {
+      "id": "caddy-http",
+      "name": "Caddy HTTP Health Check",
+      "http": "http://localhost:{{ caddy_monitoring.health_port | default(80) }}{{ caddy_monitoring.health_path | default('/health') }}",
+      "interval": "30s",
+      "timeout": "5s",
+      "method": "GET",
+      "success_before_passing": 2,
+      "failures_before_critical": 3,
+      "tls_skip_verify": true,
+      "status_codes": [200],
+      "notes": "Check if Caddy HTTP server is responding with 200 OK on health endpoint"
+    },
+    {
+      "id": "caddy-process",
+      "name": "Caddy Process Health Check",
+      "args": [
+        "systemctl",
+        "is-active",
+        "--quiet",
+        "caddy"
+      ],
+      "interval": "30s",
+      "timeout": "5s",
+      "success_before_passing": 2,
+      "failures_before_critical": 3,
+      "notes": "Check if Caddy process is running"
+    },
+    {
+      "id": "caddy-metrics",
+      "name": "Caddy Metrics Health Check",
+      "http": "http://localhost:{{ caddy_monitoring.metrics_port | default(2019) }}{{ caddy_monitoring.metrics_path | default('/metrics') }}",
+      "interval": "60s",
+      "timeout": "5s",
+      "method": "GET",
+      "success_before_passing": 2,
+      "failures_before_warning": 3,
+      "tls_skip_verify": true,
+      "status_codes": [200],
+      "notes": "Check if Caddy metrics endpoint is available"
+    }
+  ]
+}

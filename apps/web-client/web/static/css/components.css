@@ -1,0 +1,262 @@
+/* Enhanced CSS for OpenDiscourse UI Components */
+
+/* Timeline styles for legislative actions */
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #007bff;
+    left: 20px;
+    margin-left: -2px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.timeline-date {
+    position: absolute;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-align: center;
+}
+
+.timeline-content {
+    margin-left: 60px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.timeline-content h5 {
+    margin-top: 0;
+}
+
+/* Enhanced card styles */
+.card-hover {
+    transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-img-top {
+    height: 200px;
+    object-fit: cover;
+}
+
+/* Badge variations */
+.badge-sm {
+    font-size: 0.75em;
+}
+
+.badge-md {
+    font-size: 0.875em;
+}
+
+/* Progress bar enhancements */
+.progress-thin {
+    height: 5px;
+}
+
+.progress-thicker {
+    height: 15px;
+}
+
+/* Tab content styling */
+.tab-content {
+    padding: 20px 0;
+}
+
+.nav-tabs .nav-link {
+    border: 1px solid transparent;
+    border-top-left-radius: 0.375rem;
+    border-top-right-radius: 0.375rem;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+/* Breadcrumb styling */
+.breadcrumb {
+    background-color: #f8f9fa;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+}
+
+/* Alert enhancements */
+.alert-with-icon {
+    display: flex;
+    align-items: center;
+}
+
+.alert-with-icon i {
+    font-size: 1.5rem;
+    margin-right: 10px;
+}
+
+/* Search result styling */
+.search-result-item {
+    border-left: 3px solid #007bff;
+    transition: all 0.2s ease;
+}
+
+.search-result-item:hover {
+    border-left-color: #0056b3;
+    background-color: #f8f9fa;
+}
+
+/* Pagination enhancements */
+.pagination .page-link {
+    border-radius: 0.375rem;
+    margin: 0 2px;
+}
+
+.pagination .page-item.disabled .page-link {
+    background-color: #f8f9fa;
+    color: #6c757d;
+}
+
+/* Form enhancements */
+.form-control-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+}
+
+.input-group-lg .btn {
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+}
+
+/* Button group enhancements */
+.btn-group .btn {
+    border-radius: 0;
+}
+
+.btn-group .btn:first-child {
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+.btn-group .btn:last-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+/* Jumbotron enhancements */
+.jumbotron-gradient {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.jumbotron-gradient .btn {
+    margin: 10px 5px;
+}
+
+.jumbotron-gradient .btn-light {
+    color: #007bff;
+}
+
+.jumbotron-gradient .btn-outline-light {
+    color: white;
+    border-color: white;
+}
+
+.jumbotron-gradient .btn-outline-light:hover {
+    background-color: white;
+    color: #007bff;
+}
+
+/* Statistics cards */
+.stat-card {
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-card .stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #007bff;
+}
+
+.stat-card .stat-label {
+    font-size: 1rem;
+    color: #6c757d;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .timeline::before {
+        left: 15px;
+    }
+    
+    .timeline-date {
+        width: 30px;
+        height: 30px;
+        font-size: 0.6rem;
+    }
+    
+    .timeline-content {
+        margin-left: 50px;
+        padding: 10px;
+    }
+    
+    .stat-card .stat-number {
+        font-size: 2rem;
+    }
+    
+    .jumbotron-gradient {
+        padding: 1.5rem 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .timeline::before {
+        display: none;
+    }
+    
+    .timeline-date {
+        position: relative;
+        margin-bottom: 10px;
+        margin-left: 0;
+    }
+    
+    .timeline-content {
+        margin-left: 0;
+    }
+    
+    .nav-tabs .nav-link {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+}

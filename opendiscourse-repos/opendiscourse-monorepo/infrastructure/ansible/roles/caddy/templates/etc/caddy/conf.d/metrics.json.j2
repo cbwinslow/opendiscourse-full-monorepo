@@ -1,0 +1,15 @@
+{
+  "@id": "prometheus-metrics",
+  "match": [
+    {
+      "host": ["{{ caddy_monitoring.metrics_host | default('localhost') }}"],
+      "path": ["{{ caddy_monitoring.metrics_path | default('/metrics') }}"]
+    }
+  ],
+  "handle": [
+    {
+      "handler": "metrics"
+    }
+  ],
+  "terminal": true
+}

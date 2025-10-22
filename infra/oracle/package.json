@@ -1,0 +1,12 @@
+{
+  "name": "opendiscourse-oracle",
+  "description": "OpenDiscourse infrastructure on Oracle Cloud Free Tier",
+  "main": "index.ts",
+  "devDependencies": {
+    "@types/node": "^18"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.0.0",
+    "@pulumi/oci": "^4.0.0"
+  }
+}

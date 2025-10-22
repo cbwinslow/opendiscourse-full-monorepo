@@ -1,0 +1,66 @@
+[agentic-rag-test]
+localhost ansible_connection=local
+
+[agentic-rag-test:vars]
+ansible_python_interpreter=/usr/bin/python3
+
+# Base configuration
+agentic_rag_base_dir=/opt/agentic-rag-test
+agentic_rag_user=agentic-rag-test
+agentic_rag_group=agentic-rag-test
+agentic_rag_port=8091
+agentic_rag_environment=test
+agentic_rag_log_level=DEBUG
+
+# Docker configuration
+agentic_rag_docker_image: "local/agentic-rag"
+agentic_rag_version: "latest"
+agentic_rag_cpu_limit: 1.0
+agentic_rag_memory_limit: 2G
+
+# LLM Configuration
+agentic_rag_llm_provider: "localai"
+agentic_rag_llm_model: "gpt4all-j"
+
+# Vector Store Configuration
+agentic_rag_vector_store: "weaviate"
+
+# Weaviate Integration (from weaviate role)
+weaviate_http_port: 8080
+weaviate_grpc_port: 50051
+
+# LocalAI Integration (from local-ai role)
+local_ai_port: 8080
+
+# API Security
+agentic_rag_api_key: "test-api-key-123"
+agentic_rag_admin_key: "test-admin-key-456"
+
+# Monitoring
+agentic_rag_enable_metrics: true
+agentic_rag_metrics_port: 9092
+
+# Logging
+agentic_rag_log_dir: "/var/log/agentic-rag-test"
+agentic_rag_log_retention_days: 7
+
+# Test-specific overrides
+agentic_rag_extra_environment:
+  TEST_MODE: "true"
+  DEBUG: "true"
+
+# Integration with other services
+service_dependencies:
+  - name: local-ai
+    port: 8080
+    health_check: "http://localhost:8080/health"
+  - name: weaviate
+    port: 8080
+    health_check: "http://localhost:8080/v1/.well-known/ready"
+
+# Test data paths
+test_data_dir: "{{ playbook_dir }}/../tests/data"
+test_models_dir: "{{ agentic_rag_base_dir }}/models"
+
+# Skip certain checks during testing
+agentic_rag_skip_checks: false

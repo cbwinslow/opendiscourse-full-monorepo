@@ -1,0 +1,129 @@
+---
+# Security configuration for Caddy
+
+- name: Validate security configuration
+  ansible.builtin.assert:
+    that:
+      - "caddy_security is defined"
+      - "caddy_security.headers is defined"
+      - "caddy_security.rate_limit is defined"
+    success_msg: "Security configuration validation passed"
+    fail_msg: "Invalid security configuration. Please check caddy_security settings."
+  tags: [caddy, security, validate]
+
+- name: Create systemd service directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/caddy.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [caddy, security, systemd]
+
+- name: Set up systemd service override for security
+  ansible.builtin.template:
+    src: etc/systemd/system/caddy.service.d/security.conf.j2
+    dest: /etc/systemd/system/caddy.service.d/security.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: 'systemd-analyze verify %s'
+  notify: daemon-reload
+  tags: [caddy, security, systemd]
+
+- name: Configure AppArmor profile for Caddy
+  block:
+    - name: Install AppArmor utilities
+      ansible.builtin.apt:
+        name: apparmor-utils
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Deploy AppArmor profile
+      ansible.builtin.template:
+        src: etc/apparmor.d/usr.bin.caddy.j2
+        dest: /etc/apparmor.d/usr.bin.caddy
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload AppArmor profiles
+      ansible.builtin.command: apparmor_parser -r /etc/apparmor.d/usr.bin.caddy
+      register: apparmor_reload
+      changed_when: apparmor_reload.rc == 0
+      failed_when: apparmor_reload.rc != 0
+      notify: restart caddy
+  
+  when: ansible_service_mgr == 'systemd' and ansible_os_family == 'Debian' and caddy_security.apparmor | default(true)
+  tags: [caddy, security, apparmor]
+
+- name: Set up rate limiting for Caddy
+  block:
+    - name: Create rate limit configuration
+      ansible.builtin.template:
+        src: etc/caddy/conf.d/rate-limit.json.j2
+        dest: /etc/caddy/conf.d/rate-limit.json
+        owner: root
+        group: "{{ caddy_group }}"
+        mode: '0640'
+      register: rate_limit_config
+    
+    - name: Validate rate limit configuration
+      ansible.builtin.command: "{{ caddy_bin_path | default('/usr/bin/caddy') }} validate --config /etc/caddy/Caddyfile"
+      when: rate_limit_config is changed
+      register: validate_config
+      changed_when: false
+      check_mode: false
+      
+  when: caddy_security.rate_limit.enabled | default(true)
+  notify: restart caddy
+  tags: [caddy, security, rate-limit]
+
+- name: Configure security headers
+  ansible.builtin.template:
+    src: etc/caddy/snippets/security-headers.conf.j2
+    dest: /etc/caddy/snippets/security-headers.conf
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: '0640'
+  notify: restart caddy
+  when: caddy_security.headers.enabled | default(true)
+  tags: [caddy, security, headers]
+
+- name: Set file ownership and permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default(caddy_group) }}"
+    mode: "{{ item.mode }}"
+    recurse: "{{ item.recurse | default(omit) }}"
+  loop:
+    - { path: "/etc/caddy", mode: '0750', owner: root, group: "{{ caddy_group }}" }
+    - { path: "/var/log/caddy", mode: '0750', owner: "{{ caddy_user }}", group: "{{ caddy_group }}", recurse: true }
+    - { path: "/var/lib/caddy", mode: '0750', owner: "{{ caddy_user }}", group: "{{ caddy_group }}", recurse: true }
+  tags: [caddy, security, permissions]
+
+- name: Configure kernel parameters for Caddy
+  ansible.builtin.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_set: yes
+  loop:
+    - { name: 'net.ipv4.tcp_syncookies', value: '1' }
+    - { name: 'net.ipv4.tcp_max_syn_backlog', value: '4096' }
+    - { name: 'net.ipv4.tcp_synack_retries', value: '2' }
+    - { name: 'net.ipv4.ip_local_port_range', value: '2000 65000' }
+    - { name: 'net.ipv4.tcp_rfc1337', value: '1' }
+  when: ansible_os_family == 'Linux'
+  tags: [caddy, security, sysctl]
+
+- name: Configure system limits for Caddy user
+  ansible.builtin.template:
+    src: etc/security/limits.d/caddy.conf.j2
+    dest: /etc/security/limits.d/caddy.conf
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [caddy, security, limits]

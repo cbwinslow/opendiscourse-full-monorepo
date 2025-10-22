@@ -1,0 +1,72 @@
+# ======================================
+# RabbitMQ Environment Configuration
+# Managed by Ansible - Do not edit manually
+# Generated: {{ ansible_date_time.iso8601 }}
+# ======================================
+
+# Server Node Name
+NODENAME={{ rabbitmq_nodename | default('rabbit@' + inventory_hostname) }}
+
+# File Locations
+CONFIG_FILE={{ rabbitmq_config_file | default('/etc/rabbitmq/rabbitmq.conf') }}
+ADVANCED_CONFIG_FILE={{ rabbitmq_advanced_config_file | default('/etc/rabbitmq/advanced.config') }}
+ENABLED_PLUGINS_FILE={{ rabbitmq_enabled_plugins_file | default('/etc/rabbitmq/enabled_plugins') }}
+
+# Service Settings
+RABBITMQ_MNESIA_BASE={{ rabbitmq_mnesia_dir | default('/var/lib/rabbitmq/mnesia') }}
+RABBITMQ_LOG_BASE={{ rabbitmq_log_dir | default('/var/log/rabbitmq') }}
+RABBITMQ_PLUGINS_DIR={{ rabbitmq_plugins_dir | default('/usr/lib/rabbitmq/plugins') }}
+RABBITMQ_PLUGINS_EXPAND_DIR={{ rabbitmq_plugins_expand_dir | default('/var/lib/rabbitmq/mnesia/rabbit@' + inventory_hostname + '-plugins-expand') }}
+
+# Memory and Performance
+RABBITMQ_SERVER_START_ARGS="{{ rabbitmq_server_start_args | default('') }}"
+RABBITMQ_CTL_ERL_ARGS="{{ rabbitmq_ctl_erl_args | default('') }}"
+RABBITMQ_SERVER_ERL_ARGS="{{ rabbitmq_server_erl_args | default('+P 1048576 +t 1000000 +K true +Q 1048576 +A 128 +MBas ageffcbf +MHas ageffcbf +MBlmbcs 512 +MMmcs 30 +fnu +hms 32768 +hmbs 16777216 -kernel inet_default_connect_options [{nodelay,true},{raw,6,18,<<5000:64/native>>}]') }}"
+
+# File Descriptors
+ulimit -n {{ rabbitmq_nofile_limit | default(65536) }}
+
+# SSL Configuration
+{% if rabbitmq_ssl_enabled | default(false) %}
+RABBITMQ_CTL_ERL_ARGS="$RABBITMQ_CTL_ERL_ARGS -proto_dist inet_tls"
+RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS="-pa /usr/lib/rabbitmq/lib/rabbitmq_server-{{ rabbitmq_version | default('3.9.11') }}/plugins/rabbitmq_management-{{ rabbitmq_management_version | default('3.9.11') }}/ebin -proto_dist inet_tls"
+RABBITMQ_CTL_ERL_ARGS="$RABBITMQ_CTL_ERL_ARGS -pa /usr/lib/rabbitmq/lib/rabbitmq_server-{{ rabbitmq_version | default('3.9.11') }}/plugins/rabbitmq_management-{{ rabbitmq_management_version | default('3.9.11') }}/ebin"
+{% endif %}
+
+# Cluster Settings
+{% if rabbitmq_cluster_nodes is defined and rabbitmq_cluster_nodes | length > 0 %}
+RABBITMQ_NODENAME={{ rabbitmq_nodename | default('rabbit@' + inventory_hostname) }}
+RABBITMQ_USE_LONGNAME=true
+RABBITMQ_NODE_IP_ADDRESS={{ rabbitmq_node_ip | default(ansible_default_ipv4.address) }}
+RABBITMQ_NODE_PORT={{ rabbitmq_node_port | default(5672) }}
+RABBITMQ_DIST_PORT={{ rabbitmq_dist_port | default(25672) }}
+{% endif %}
+
+# Management Plugin
+RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS="$RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS -rabbitmq_management listener [{port,{{ rabbitmq_management_port | default(15672) }}}]"
+
+# Prometheus Metrics (if enabled)
+{% if rabbitmq_prometheus_enabled | default(true) %}
+RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS="$RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS -rabbitmq_prometheus tcp_listener [{{ rabbitmq_prometheus_bind_ip | default('0.0.0.0') }},{{ rabbitmq_prometheus_port | default(15692) }}]"
+{% endif %}
+
+# Memory High Watermark
+RABBITMQ_VM_MEMORY_HIGH_WATERMARK={{ rabbitmq_memory_high_watermark | default(0.4) }}
+
+# Disk Free Limit
+RABBITMQ_DISK_FREE_LIMIT={{ rabbitmq_disk_free_limit | default('2GB') }}
+
+# File Handles
+RABBITMQ_ULIMIT_NOFILES={{ rabbitmq_nofile_limit | default(65536) }}
+
+# Additional Environment Variables
+{% if rabbitmq_environment is defined %}
+{% for key, value in rabbitmq_environment.items() %}
+{{ key }}={{ value }}
+{% endfor %}
+{% endif %}
+
+# Load Custom Environment Variables
+if [ -f /etc/rabbitmq/rabbitmq-env-custom.conf ]; then
+    . /etc/rabbitmq/rabbitmq-env-custom.conf
+fi

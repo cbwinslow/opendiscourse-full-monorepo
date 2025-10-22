@@ -1,0 +1,117 @@
+# Agentic RAG Configuration
+app:
+  environment: {{ agentic_rag_environment }}
+  log_level: {{ agentic_rag_log_level }}
+  host: 0.0.0.0
+  port: {{ agentic_rag_port }}
+  debug: false
+  workers: {{ agentic_rag_max_workers }}
+  reload: false
+
+# Vector Store Configuration
+vector_store:
+  type: {{ agentic_rag_vector_store }}
+  
+  # Weaviate Configuration (API key from vault)
+  weaviate:
+    url: http://localhost:{{ weaviate_http_port }}
+    api_key: "{{ local_ai_secrets.weaviate_api_key }}"
+    timeout: 60
+    
+  # Qdrant Configuration (API key from vault)
+  qdrant:
+    url: http://localhost:6333
+    api_key: "{{ local_ai_secrets.qdrant_api_key }}"
+    timeout: 60
+    
+  # PGVector Configuration (credentials managed externally)
+  pgvector:
+    dsn: postgresql://postgres:postgres@localhost:5432/vector_db
+    table_name: document_embeddings
+
+# LLM Configuration
+llm:
+  provider: {{ agentic_rag_llm_provider }}
+  
+  # LocalAI Configuration
+  localai:
+    base_url: http://localhost:{{ local_ai_port }}
+    model: {{ agentic_rag_llm_model }}
+    temperature: 0.7
+    max_tokens: 2048
+    
+  # OpenAI Configuration
+  openai:
+    api_key: "{{ local_ai_secrets.openai_api_key }}"
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2048
+
+# Embeddings Configuration
+embeddings:
+  model: {{ agentic_rag_embedding_model }}
+  batch_size: 32
+  
+# Document Processing
+document_processing:
+  chunk_size: 1000
+  chunk_overlap: 200
+  max_document_size_mb: 10
+  supported_file_types:
+    - pdf
+    - txt
+    - md
+    - docx
+    - pptx
+
+# API Keys and Secrets
+secrets:
+  # Managed via Ansible Vault
+  openai_api_key: "{{ local_ai_secrets.openai_api_key }}"
+  weaviate_api_key: "{{ local_ai_secrets.weaviate_api_key }}"
+  qdrant_api_key: "{{ local_ai_secrets.qdrant_api_key }}"
+  
+# Monitoring and Logging
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+    port: 9091
+  sentry:
+    enabled: false
+    dsn: ""
+
+# Caching
+cache:
+  enabled: true
+  ttl_seconds: 3600
+  max_size_mb: 1000
+
+# Rate Limiting
+rate_limiting:
+  enabled: true
+  requests_per_minute: 60
+
+# Security
+security:
+  cors_allowed_origins:
+    - "*"
+  api_key_auth: true  # Requires admin key below
+  admin_api_key: "{{ local_ai_secrets.agentic_rag_admin_key }}"
+  
+# External Services
+external_services:
+  neo4j:
+    uri: bolt://localhost:{{ neo4j_bolt_port }}
+    username: neo4j
+    password: "{{ local_ai_secrets.agentic_rag_neo4j_password }}"
+  
+  # Add other external services as needed
+  
+# Feature Flags
+features:
+  enable_knowledge_graph: true
+  enable_vector_search: true
+  enable_hybrid_search: true
+  enable_web_interface: true
+  enable_api_docs: true

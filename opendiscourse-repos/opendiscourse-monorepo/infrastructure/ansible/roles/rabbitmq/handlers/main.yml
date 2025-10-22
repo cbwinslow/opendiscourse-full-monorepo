@@ -1,0 +1,66 @@
+---
+# RabbitMQ Handlers
+
+- name: restart rabbitmq
+  ansible.builtin.service:
+    name: rabbitmq-server
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  async: 300
+  poll: 0
+  register: rabbitmq_restarted
+  listen: restart rabbitmq
+
+- name: reload rabbitmq
+  ansible.builtin.service:
+    name: rabbitmq-server
+    state: reloaded
+  when: not rabbitmq_restarted is changed
+  listen: reload rabbitmq
+
+- name: enable rabbitmq
+  ansible.builtin.service:
+    name: rabbitmq-server
+    enabled: yes
+  listen: enable rabbitmq
+
+- name: start rabbitmq
+  ansible.builtin.service:
+    name: rabbitmq-server
+    state: started
+    enabled: yes
+  listen: start rabbitmq
+
+- name: stop rabbitmq
+  ansible.builtin.service:
+    name: rabbitmq-server
+    state: stopped
+  listen: stop rabbitmq
+
+- name: check rabbitmq status
+  ansible.builtin.command: rabbitmqctl status
+  register: rabbitmq_status
+  changed_when: false
+  listen: check rabbitmq status
+
+- name: reset rabbitmq node
+  ansible.builtin.command: rabbitmqctl reset
+  when: rabbitmq_force_reset | default(false)
+  listen: reset rabbitmq
+
+- name: join rabbitmq cluster
+  ansible.builtin.command: >
+    rabbitmqctl stop_app &&
+    rabbitmqctl reset &&
+    rabbitmqctl join_cluster {{ rabbitmq_cluster_node }} &&
+    rabbitmqctl start_app
+  when: 
+    - rabbitmq_cluster_node is defined
+    - rabbitmq_join_cluster | default(false)
+  listen: join rabbitmq cluster
+
+- name: set rabbitmq cluster name
+  ansible.builtin.command: rabbitmqctl set_cluster_name {{ rabbitmq_cluster_name }}
+  when: rabbitmq_cluster_name is defined
+  listen: set rabbitmq cluster name

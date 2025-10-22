@@ -1,0 +1,170 @@
+version: '3.8'
+
+services:
+  # LocalAI Service
+  localai:
+    image: localai/localai:latest
+    container_name: localai
+    ports:
+      - "8080:8080"
+    volumes:
+      - localai_data:/data
+    environment:
+      - MODEL_PATH=/data/models
+      - MODEL_NAME=${LOCALAI_MODEL:-ggml-gpt4all-j-v1.3-groovy}
+    restart: unless-stopped
+
+  # Neo4j Database
+  neo4j:
+    image: neo4j:latest
+    container_name: neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    environment:
+      - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/password}
+      - NEO4J_dbms_memory_heap_maxSize=4G
+      - NEO4J_dbms_memory_pagecache_size=2G
+    restart: unless-stopped
+
+  # Graphite
+  graphite:
+    image: graphiteapp/graphite-statsd:latest
+    container_name: graphite
+    ports:
+      - "80:80"
+      - "2003:2003"
+      - "2004:2004"
+      - "2005:2005"
+      - "2006:2006"
+      - "2007:2007"
+      - "2008:2008"
+      - "2009:2009"
+      - "2013:2013"
+      - "2014:2014"
+      - "8125:8125/udp"
+      - "8126:8126"
+    volumes:
+      - graphite_data:/opt/graphite/storage
+    restart: unless-stopped
+
+  # OpenDiscourse
+  opendiscourse:
+    image: opendiscourse/opendiscourse:latest
+    container_name: opendiscourse
+    ports:
+      - "3000:3000"
+    volumes:
+      - opendiscourse_data:/var/www/discourse
+    environment:
+      - DISCOURSE_HOSTNAME=${DISCOURSE_HOSTNAME}
+      - DISCOURSE_DEVELOPER_EMAILS=${DISCOURSE_DEVELOPER_EMAILS}
+      - DISCOURSE_SMTP_ADDRESS=${DISCOURSE_SMTP_ADDRESS}
+      - DISCOURSE_SMTP_PORT=${DISCOURSE_SMTP_PORT}
+      - DISCOURSE_SMTP_USER_NAME=${DISCOURSE_SMTP_USER_NAME}
+      - DISCOURSE_SMTP_PASSWORD=${DISCOURSE_SMTP_PASSWORD}
+    restart: unless-stopped
+
+  # Monitoring Services
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    environment:
+      - discovery.type=single-node
+    restart: unless-stopped
+
+  graylog:
+    image: graylog/graylog:latest
+    container_name: graylog
+    ports:
+      - "9000:9000"
+      - "12201:12201"
+      - "1514:1514"
+    volumes:
+      - graylog_data:/usr/share/graylog/data
+    environment:
+      - GRAYLOG_PASSWORD_SECRET=${GRAYLOG_PASSWORD_SECRET}
+      - GRAYLOG_ROOT_PASSWORD_SHA2=${GRAYLOG_ROOT_PASSWORD_SHA2}
+    restart: unless-stopped
+
+  # Reverse Proxy (Traefik)
+  traefik:
+    image: traefik:v2.9
+    container_name: traefik
+    command:
+      - --api.insecure=true
+      - --providers.docker
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.myresolver.acme.tlschallenge=true
+      - --certificatesresolvers.myresolver.acme.email=${EMAIL}
+      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/letsencrypt:/letsencrypt
+    restart: unless-stopped
+
+  # Cloudflare DDoS Protection
+  cloudflare-ddos:
+    image: cloudflare/ddos-protection:latest
+    container_name: cloudflare-ddos
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ZONE_ID=${CF_ZONE_ID}
+      - CF_EMAIL=${CF_EMAIL}
+    restart: unless-stopped
+
+volumes:
+  localai_data:
+  neo4j_data:
+  neo4j_logs:
+  graphite_data:
+  opendiscourse_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  opensearch_data:
+  graylog_data:

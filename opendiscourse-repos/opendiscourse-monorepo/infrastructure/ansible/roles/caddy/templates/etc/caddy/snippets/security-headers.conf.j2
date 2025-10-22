@@ -1,0 +1,80 @@
+# Security Headers Snippet
+# {{ ansible_managed }}
+
+# HTTP Strict Transport Security (HSTS)
+{% if caddy_security_headers.strict_transport_security is defined %}
+header Strict-Transport-Security "{{ caddy_security_headers.strict_transport_security }}"
+{% endif %}
+
+# X-Content-Type-Options
+{% if caddy_security_headers.x_content_type_options is defined %}
+header X-Content-Type-Options "{{ caddy_security_headers.x_content_type_options }}"
+{% endif %}
+
+# X-Frame-Options
+{% if caddy_security_headers.x_frame_options is defined %}
+header X-Frame-Options "{{ caddy_security_headers.x_frame_options }}"
+{% endif %}
+
+# X-XSS-Protection
+{% if caddy_security_headers.x_xss_protection is defined %}
+header X-XSS-Protection "{{ caddy_security_headers.x_xss_protection }}"
+{% endif %}
+
+# Referrer-Policy
+{% if caddy_security_headers.referrer_policy is defined %}
+header Referrer-Policy "{{ caddy_security_headers.referrer_policy }}"
+{% endif %}
+
+# Feature-Policy (legacy)
+{% if caddy_security_headers.feature_policy is defined and caddy_security_headers.feature_policy %}
+header Feature-Policy "{{ caddy_security_headers.feature_policy }}"
+{% endif %}
+
+# Permissions-Policy
+{% if caddy_security_headers.permissions_policy is defined and caddy_security_headers.permissions_policy %}
+header Permissions-Policy "{{ caddy_security_headers.permissions_policy }}"
+{% endif %}
+
+# Content-Security-Policy
+{% if caddy_security_headers.content_security_policy is defined and caddy_security_headers.content_security_policy %}
+header Content-Security-Policy "{{ caddy_security_headers.content_security_policy }}"
+{% endif %}
+
+# Expect-CT
+{% if caddy_security_headers.expect_ct is defined and caddy_security_headers.expect_ct %}
+header Expect-CT "{{ caddy_security_headers.expect_ct }}"
+{% endif %}
+
+# X-Permitted-Cross-Domain-Policies
+{% if caddy_security_headers.x_permitted_cross_domain_policies is defined %}
+header X-Permitted-Cross-Domain-Policies "{{ caddy_security_headers.x_permitted_cross_domain_policies }}"
+{% endif %}
+
+# Cross-Origin-Embedder-Policy
+{% if caddy_security_headers.cross_origin_embedder_policy is defined %}
+header Cross-Origin-Embedder-Policy "{{ caddy_security_headers.cross_origin_embedder_policy }}"
+{% endif %}
+
+# Cross-Origin-Opener-Policy
+{% if caddy_security_headers.cross_origin_opener_policy is defined %}
+header Cross-Origin-Opener-Policy "{{ caddy_security_headers.cross_origin_opener_policy }}"
+{% endif %}
+
+# Cross-Origin-Resource-Policy
+{% if caddy_security_headers.cross_origin_resource_policy is defined %}
+header Cross-Origin-Resource-Policy "{{ caddy_security_headers.cross_origin_resource_policy }}"
+{% endif %}
+
+# X-Download-Options
+{% if caddy_security_headers.x_download_options is defined %}
+header X-Download-Options "{{ caddy_security_headers.x_download_options }}"
+{% endif %}
+
+# X-DNS-Prefetch-Control
+{% if caddy_security_headers.x_dns_prefetch_control is defined %}
+header X-DNS-Prefetch-Control "{{ caddy_security_headers.x_dns_prefetch_control }}"
+{% endif %}
+
+# Remove Server header
+header -Server

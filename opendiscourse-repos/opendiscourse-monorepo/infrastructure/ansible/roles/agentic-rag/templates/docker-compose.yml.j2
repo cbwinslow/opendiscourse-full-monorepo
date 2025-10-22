@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  agentic-rag:
+    image: {{ agentic_rag_docker_image }}:{{ agentic_rag_version | default('latest') }}
+    container_name: agentic-rag
+    restart: unless-stopped
+    ports:
+      - "{{ agentic_rag_host_ip }}:{{ agentic_rag_port }}:{{ agentic_rag_port }}"
+    environment:
+      - ENVIRONMENT={{ agentic_rag_environment | default('production') }}
+      - LOG_LEVEL={{ agentic_rag_log_level | default('INFO') }}
+      - CONFIG_PATH=/app/config/config.yaml
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - VECTOR_STORE_TYPE={{ agentic_rag_vector_store | default('weaviate') }}
+      - LLM_PROVIDER={{ agentic_rag_llm_provider | default('localai') }}
+      - API_KEY={{ agentic_rag_api_key | default('') }}
+      - ADMIN_API_KEY={{ agentic_rag_admin_key | default('') }}
+    volumes:
+      - {{ agentic_rag_config_dir }}:/app/config:ro
+      - {{ agentic_rag_data_dir }}:/app/data
+      - {{ agentic_rag_log_dir }}:/app/logs
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - agentic-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:{{ agentic_rag_port }}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    {% if agentic_rag_extra_environment is defined %}
+    environment:
+      {% for key, value in agentic_rag_extra_environment.items() %}
+      - {{ key }}={{ value }}
+      {% endfor %}
+    {% endif %}
+    {% if agentic_rag_extra_volumes is defined %}
+    volumes:
+      {% for volume in agentic_rag_extra_volumes %}
+      - {{ volume }}
+      {% endfor %}
+    {% endif %}
+    deploy:
+      resources:
+        limits:
+          cpus: '{{ agentic_rag_cpu_limit | default("2.0") }}'
+          memory: {{ agentic_rag_memory_limit | default('4G') }}
+        reservations:
+          memory: 1G
+
+networks:
+  agentic-net:
+    driver: bridge
+    name: agentic-net

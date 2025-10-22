@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="bill-details">
+    <!-- Bill content will be loaded here -->
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading bill details...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const billId = '{{ bill_id }}';
+    
+    // Load bill details when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadBillDetails();
+    });
+    
+    function loadBillDetails() {
+        fetch(`/api/bills/${billId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Bill not found');
+                }
+                return response.json();
+            })
+            .then(bill => {
+                displayBillDetails(bill);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('bill-details').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Error loading bill details. Please try again.
+                    </div>
+                `;
+            });
+    }
+    
+    function displayBillDetails(bill) {
+        let html = `
+            <div class="row">
+                <div class="col-md-12">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.bills') }}">Bills</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">${bill.identifier}</li>
+                        </ol>
+                    </nav>
+                    
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h1>${bill.identifier}: ${bill.title}</h1>
+                            <p class="lead">${bill.subject ? bill.subject.join(', ') : ''}</p>
+                        </div>
+                        <div>
+                            ${bill.urls && bill.urls.congress_gov ? 
+                                `<a href="${bill.urls.congress_gov}" class="btn btn-outline-primary" target="_blank">
+                                    <i class="fas fa-external-link-alt"></i> Official Source
+                                </a>` : ''}
+                        </div>
+                    </div>
+                    
+                    <ul class="nav nav-tabs" id="billTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">Overview</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="sponsors-tab" data-bs-toggle="tab" data-bs-target="#sponsors" type="button" role="tab">Sponsors</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="actions-tab" data-bs-toggle="tab" data-bs-target="#actions" type="button" role="tab">Actions</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="votes-tab" data-bs-toggle="tab" data-bs-target="#votes" type="button" role="tab">Votes</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="billTabContent">
+                        <!-- Overview Tab -->
+                        <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-8">
+                                    <h3>Bill Summary</h3>
+                                    <p>${bill.extras && bill.extras.summary ? bill.extras.summary : 'No summary available.'}</p>
+                                    
+                                    ${bill.extras && bill.extras.summary_short ? `
+                                        <h4>Short Summary</h4>
+                                        <p>${bill.extras.summary_short}</p>
+                                    ` : ''}
+                                    
+                                    <h3>Classification</h3>
+                                    <p>${bill.classification ? bill.classification.join(', ') : 'Not classified.'}</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">Bill Information</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Identifier:</strong> ${bill.identifier}</p>
+                                            <p><strong>Created:</strong> ${bill.created_at}</p>
+                                            <p><strong>Last Updated:</strong> ${bill.updated_at}</p>
+                                            <p><strong>Jurisdiction:</strong> ${bill.jurisdiction_id ? bill.jurisdiction_id.split('/').pop() : 'Unknown'}</p>
+                                            <p><strong>Session:</strong> ${bill.session_id || 'Unknown'}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mt-3">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">Status</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Latest Action:</strong> ${bill.extras && bill.extras.latest_major_action ? bill.extras.latest_major_action : 'No recent action.'}</p>
+                                            <p><strong>Action Date:</strong> ${bill.extras && bill.extras.latest_major_action_date ? bill.extras.latest_major_action_date : 'Unknown'}</p>
+                                            ${bill.extras && bill.extras.active !== undefined ? `
+                                                <p><strong>Status:</strong> 
+                                                    <span class="badge ${bill.extras.active ? 'bg-success' : 'bg-secondary'}">
+                                                        ${bill.extras.active ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                </p>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sponsors Tab -->
+                        <div class="tab-pane fade" id="sponsors" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h3>Sponsors and Co-sponsors</h3>
+                                    ${bill.sponsors && bill.sponsors.length > 0 ? `
+                                        <div class="row">
+                                            ${bill.sponsors.map(sponsor => `
+                                                <div class="col-md-6 mb-3">
+                                                    <div class="card">
+                                                        <div class="card-body">
+                                                            <h5 class="card-title">${sponsor.name}</h5>
+                                                            <p class="card-text">
+                                                                <span class="badge ${sponsor.primary ? 'bg-primary' : 'bg-secondary'}">
+                                                                    ${sponsor.primary ? 'Primary Sponsor' : 'Co-sponsor'}
+                                                                </span>
+                                                                ${sponsor.classification ? `<span class="badge bg-info ms-1">${sponsor.classification}</span>` : ''}
+                                                            </p>
+                                                            <p class="card-text"><small class="text-muted">${sponsor.entity_type}</small></p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : '<p>No sponsors found.</p>'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Actions Tab -->
+                        <div class="tab-pane fade" id="actions" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h3>Legislative Actions</h3>
+                                    ${bill.actions && bill.actions.length > 0 ? `
+                                        <div class="timeline">
+                                            ${bill.actions.map(action => `
+                                                <div class="timeline-item">
+                                                    <div class="timeline-date">${action.date}</div>
+                                                    <div class="timeline-content">
+                                                        <h5>${action.organization}</h5>
+                                                        <p>${action.description}</p>
+                                                        ${action.classification ? `<span class="badge bg-secondary">${action.classification.join(', ')}</span>` : ''}
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : '<p>No actions recorded.</p>'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Votes Tab -->
+                        <div class="tab-pane fade" id="votes" role="tabpanel">
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h3>Vote Records</h3>
+                                    ${bill.votes && bill.votes.length > 0 ? `
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Motion</th>
+                                                        <th>Organization</th>
+                                                        <th>Result</th>
+                                                        <th>Details</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${bill.votes.map(vote => `
+                                                        <tr>
+                                                            <td>${vote.date}</td>
+                                                            <td>${vote.motion}</td>
+                                                            <td>${vote.organization}</td>
+                                                            <td>
+                                                                <span class="badge ${vote.result === 'pass' ? 'bg-success' : 'bg-danger'}">
+                                                                    ${vote.result}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <button class="btn btn-sm btn-outline-primary" disabled>
+                                                                    View Details
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ` : '<p>No votes recorded.</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('bill-details').innerHTML = html;
+        
+        // Update page title
+        document.title = `${bill.identifier} - ${bill.title} - OpenDiscourse`;
+    }
+</script>
+{% endblock %}

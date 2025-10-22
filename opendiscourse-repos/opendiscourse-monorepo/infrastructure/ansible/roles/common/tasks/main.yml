@@ -1,0 +1,130 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+- name: Install base packages
+  apt:
+    name: 
+      - build-essential
+      - python3-pip
+      - python3-venv
+      - curl
+      - wget
+      - git
+      - sudo
+      - ufw
+      - fail2ban
+      - vim
+      - htop
+      - net-tools
+      - tree
+      - jq
+    state: present
+
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker APT repository
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    state: present
+    update_cache: yes
+
+- name: Configure timezone
+  community.general.timezone:
+      name: "{{ timezone }}"
+
+- name: Configure SSH
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    mode: '0600'
+  notify: restart ssh
+
+- name: Configure firewall
+  template:
+    src: ufw_rules.j2
+    dest: /etc/ufw/user.rules
+  notify: restart ufw
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: Configure fail2ban
+  template:
+    src: fail2ban.j2
+    dest: /etc/fail2ban/jail.local
+  notify: restart fail2ban
+
+- name: Create deploy user
+  user:
+    name: "{{ ansible_user }}"
+    shell: /bin/bash
+    state: present
+    groups: sudo
+    append: yes
+
+- name: Configure sudoers for deploy user
+  copy:
+    content: "{{ ansible_user }} ALL=(ALL) NOPASSWD:ALL"
+    dest: /etc/sudoers.d/{{ ansible_user }}
+    mode: '0440'
+
+- name: Configure SSH keys for deploy user
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ lookup('file', ansible_ssh_private_key_file) }}"
+
+- name: Ensure home directory permissions
+  file:
+    path: /home/{{ ansible_user }}
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+    recurse: yes
+
+- name: Copy SSH config
+  copy:
+    src: ssh_config.j2
+    dest: /home/{{ ansible_user }}/.ssh/config
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Create log directory
+  file:
+    path: /var/log/ansible
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create backup directory
+  file:
+    path: /var/backups/ansible
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create cache directory
+  file:
+    path: /var/cache/ansible
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'

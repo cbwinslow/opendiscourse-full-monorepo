@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # OpenSearch
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch
+    environment:
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - "discovery.type=single-node"
+      - "plugins.security.ssl.http.enabled=false"
+      - "plugins.security.disabled=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    networks:
+      - olk_network
+
+  # OpenSearch Dashboards
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      - "OPENSEARCH_HOSTS=[\"http://opensearch:9200\"]"
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"
+    depends_on:
+      - opensearch
+    networks:
+      - olk_network
+
+  # Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash-oss:8.9.0
+    container_name: logstash
+    volumes:
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/
+      - ./logstash/config/:/usr/share/logstash/config/
+    environment:
+      - "LS_JAVA_OPTS=-Xmx1g -Xms1g"
+    ports:
+      - "5000:5000"
+      - "5044:5044"
+    depends_on:
+      - opensearch
+    networks:
+      - olk_network
+
+  # Filebeat
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.9.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    depends_on:
+      - logstash
+    networks:
+      - olk_network
+
+  # Qdrant Vector Store
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - olk_network
+
+  # PGVector (PostgreSQL with vector extension)
+  pgvector:
+    image: ankane/pgvector:latest
+    container_name: pgvector
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - olk_network
+
+  # Vector Bridge Service (custom service to connect OLK with vector stores)
+  vector-bridge:
+    build: ./vector-bridge
+    container_name: vector-bridge
+    environment:
+      - OPENSEARCH_URL=http://opensearch:9200
+      - QDRANT_URL=http://qdrant:6333
+      - POSTGRES_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgvector:5432/${POSTGRES_DB}
+    depends_on:
+      - opensearch
+      - qdrant
+      - pgvector
+    networks:
+      - olk_network
+
+networks:
+  olk_network:
+    driver: bridge
+
+volumes:
+  opensearch_data:
+  qdrant_data:
+  pgvector_data:

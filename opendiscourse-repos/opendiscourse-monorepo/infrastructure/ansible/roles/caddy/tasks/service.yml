@@ -1,0 +1,165 @@
+---
+# Service management for Caddy
+
+- name: Validate service configuration
+  ansible.builtin.assert:
+    that:
+      - "caddy_service is defined"
+      - "caddy_service.user is defined"
+      - "caddy_service.group is defined"
+    success_msg: "Service configuration validation passed"
+    fail_msg: "Invalid service configuration. Please check caddy_service settings."
+  tags: [caddy, service, validate]
+
+- name: Create Caddy system directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "/etc/caddy", owner: root, group: "{{ caddy_group }}", mode: '0750' }
+    - { path: "/etc/caddy/conf.d", owner: root, group: "{{ caddy_group }}", mode: '0750' }
+    - { path: "{{ caddy_config_dir }}", owner: "{{ caddy_user }}", group: "{{ caddy_group }}", mode: '0750' }
+    - { path: "{{ caddy_data_dir }}", owner: "{{ caddy_user }}", group: "{{ caddy_group }}", mode: '0750' }
+    - { path: "{{ caddy_log_dir }}", owner: "{{ caddy_user }}", group: "{{ caddy_group }}", mode: '0750' }
+  tags: [caddy, service, directories]
+
+- name: Ensure Caddy service directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/caddy.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: ansible_service_mgr == 'systemd'
+  tags: [caddy, service, systemd]
+
+- name: Deploy Caddy systemd service file
+  block:
+    - name: Deploy main service file
+      ansible.builtin.template:
+        src: etc/systemd/system/caddy.service.j2
+        dest: /etc/systemd/system/caddy.service
+        owner: root
+        group: root
+        mode: '0644'
+        validate: 'systemd-analyze verify %s'
+      register: systemd_service
+    
+    - name: Deploy environment file
+      ansible.builtin.template:
+        src: etc/systemd/system/caddy.env.j2
+        dest: /etc/default/caddy
+        owner: root
+        group: root
+        mode: '0640'
+      register: env_file
+    
+    - name: Reload systemd if configuration changed
+      ansible.builtin.systemd:
+        daemon_reload: yes
+        name: caddy
+      when: systemd_service is changed or env_file is changed
+      notify: restart caddy
+  
+  when: ansible_service_mgr == 'systemd'
+  tags: [caddy, service, systemd]
+
+- name: Enable and start Caddy service
+  block:
+    - name: Ensure service is enabled and started
+      ansible.builtin.service:
+        name: caddy
+        state: "{{ 'started' if caddy_service.enabled | default(true) else 'stopped' }}"
+        enabled: "{{ caddy_service.enabled | default(true) }}"
+      register: service_status
+    
+    - name: Verify service status
+      ansible.builtin.command: systemctl is-active caddy
+      register: service_active
+      changed_when: false
+      check_mode: false
+      failed_when: false
+    
+    - name: Get service status
+      ansible.builtin.command: systemctl status caddy --no-pager
+      register: service_status_output
+      changed_when: false
+      check_mode: false
+      failed_when: false
+      when: service_active.rc != 0
+    
+    - name: Fail if service is not running
+      ansible.builtin.fail:
+        msg: "Caddy service failed to start. Status: {{ service_status_output.stderr | default(service_status_output.stdout) }}"
+      when: service_active.rc != 0 and caddy_service.enabled | default(true)
+  
+  tags: [caddy, service]
+
+- name: Configure service limits
+  ansible.builtin.template:
+    src: etc/security/limits.d/caddy.conf.j2
+    dest: /etc/security/limits.d/caddy.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family == 'Linux'
+  tags: [caddy, service, limits]
+
+- name: Configure log rotation
+  ansible.builtin.template:
+    src: etc/logrotate.d/caddy.j2
+    dest: /etc/logrotate.d/caddy
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family == 'Linux'
+  tags: [caddy, service, logrotate]
+
+- name: Configure systemd-journald for Caddy
+  block:
+    - name: Create systemd-journald config directory
+      ansible.builtin.file:
+        path: /etc/systemd/journald.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    
+    - name: Configure journald for Caddy
+      ansible.builtin.template:
+        src: etc/systemd/journald.conf.d/caddy.conf.j2
+        dest: /etc/systemd/journald.conf.d/caddy.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart systemd-journald
+  
+  when: ansible_service_mgr == 'systemd'
+  tags: [caddy, service, journald]
+
+- name: Verify Caddy installation
+  block:
+    - name: Check Caddy version
+      ansible.builtin.command: "{{ caddy_bin_path | default('/usr/bin/caddy') }} version"
+      register: caddy_version
+      changed_when: false
+      check_mode: false
+    
+    - name: Validate Caddy configuration
+      ansible.builtin.command: "{{ caddy_bin_path | default('/usr/bin/caddy') }} validate --config /etc/caddy/Caddyfile"
+      register: validate_config
+      changed_when: false
+      check_mode: false
+    
+    - name: Display Caddy status
+      ansible.builtin.debug:
+        msg: |
+          Caddy Service Status:
+          - Version: {{ caddy_version.stdout | default('unknown') }}
+          - Config Valid: {{ 'Yes' if validate_config.rc == 0 else 'No' }}
+          - Config Output: {{ validate_config.stderr | default(validate_config.stdout) }}
+  
+  tags: [caddy, service, verify]

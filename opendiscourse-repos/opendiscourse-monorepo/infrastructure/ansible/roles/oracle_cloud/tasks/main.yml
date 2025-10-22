@@ -1,0 +1,161 @@
+---
+- name: Install OCI CLI
+  block:
+    - name: Install Python dependencies
+      pip:
+        name:
+          - oci
+          - oci-cli
+          - terraform
+        state: present
+
+    - name: Create OCI directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/oci
+        - /var/log/oci
+        - /opt/oci
+        - /opt/terraform
+
+    - name: Configure OCI credentials
+      copy:
+        src: "{{ oci_config_file }}"
+        dest: /etc/oci/config
+        mode: '0600'
+        owner: root
+        group: root
+
+    - name: Configure OCI keys
+      copy:
+        src: "{{ oci_private_key }}"
+        dest: /etc/oci/oci_api_key.pem
+        mode: '0600'
+        owner: root
+        group: root
+
+  when: oracle_cloud_enabled
+
+- name: Create OCI resources with Terraform
+  block:
+    - name: Initialize Terraform
+      command: terraform init
+      args:
+        chdir: /opt/terraform/oci
+        creates: /opt/terraform/oci/.terraform
+
+    - name: Plan Terraform changes
+      command: terraform plan
+      args:
+        chdir: /opt/terraform/oci
+
+    - name: Apply Terraform configuration
+      command: terraform apply -auto-approve
+      args:
+        chdir: /opt/terraform/oci
+
+  when: oracle_cloud_enabled and terraform_enabled
+
+- name: Create OCI Compute instances
+  block:
+    - name: Create instance
+      oci_compute_instance:
+        compartment_id: "{{ oci_compartment_id }}"
+        display_name: "{{ item.name }}"
+        shape: "{{ item.shape }}"
+        source_details:
+          source_type: image
+          image_id: "{{ item.image_id }}"
+        availability_domain: "{{ item.availability_domain }}"
+        subnet_id: "{{ item.subnet_id }}"
+        metadata:
+          ssh_authorized_keys: "{{ item.ssh_keys }}"
+        state: present
+      loop: "{{ oci_compute_instances }}"
+
+  when: oracle_cloud_enabled and oci_compute_instances is defined
+
+- name: Create OCI Databases
+  block:
+    - name: Create database system
+      oci_database_system:
+        compartment_id: "{{ oci_compartment_id }}"
+        display_name: "{{ item.name }}"
+        shape: "{{ item.shape }}"
+        ssh_public_keys: "{{ item.ssh_keys }}"
+        db_system_options:
+          storage_management: "{{ item.storage_management }}"
+        data_storage_size_in_gb: "{{ item.storage_size }}"
+        state: present
+      loop: "{{ oci_databases }}"
+
+  when: oracle_cloud_enabled and oci_databases is defined
+
+- name: Create OCI Object Storage
+  block:
+    - name: Create bucket
+      oci_objectstorage_bucket:
+        namespace_name: "{{ oci_namespace }}"
+        name: "{{ item.name }}"
+        compartment_id: "{{ oci_compartment_id }}"
+        public_access_type: "{{ item.public_access_type }}"
+        storage_tier: "{{ item.storage_tier }}"
+        state: present
+      loop: "{{ oci_buckets }}"
+
+  when: oracle_cloud_enabled and oci_buckets is defined
+
+- name: Create OCI Load Balancers
+  block:
+    - name: Create load balancer
+      oci_load_balancer:
+        compartment_id: "{{ oci_compartment_id }}"
+        display_name: "{{ item.name }}"
+        shape_name: "{{ item.shape }}"
+        subnet_ids: "{{ item.subnet_ids }}"
+        backend_sets: "{{ item.backend_sets }}"
+        state: present
+      loop: "{{ oci_load_balancers }}"
+
+  when: oracle_cloud_enabled and oci_load_balancers is defined
+
+- name: Configure OCI monitoring
+  block:
+    - name: Create metrics
+      oci_monitoring_metric:
+        compartment_id: "{{ oci_compartment_id }}"
+        display_name: "{{ item.name }}"
+        namespace: "{{ item.namespace }}"
+        metrics: "{{ item.metrics }}"
+        state: present
+      loop: "{{ oci_metrics }}"
+
+  when: oracle_cloud_enabled and oci_metrics is defined
+
+- name: Configure OCI security
+  block:
+    - name: Create security list
+      oci_network_security_list:
+        compartment_id: "{{ oci_compartment_id }}"
+        display_name: "{{ item.name }}"
+        ingress_security_rules: "{{ item.ingress_rules }}"
+        egress_security_rules: "{{ item.egress_rules }}"
+        state: present
+      loop: "{{ oci_security_lists }}"
+
+  when: oracle_cloud_enabled and oci_security_lists is defined
+
+- name: Configure OCI networking
+  block:
+    - name: Create VCN
+      oci_virtual_network_vcn:
+        compartment_id: "{{ oci_compartment_id }}"
+        display_name: "{{ item.name }}"
+        cidr_block: "{{ item.cidr_block }}"
+        dns_label: "{{ item.dns_label }}"
+        state: present
+      loop: "{{ oci_vcns }}"
+
+  when: oracle_cloud_enabled and oci_vcns is defined

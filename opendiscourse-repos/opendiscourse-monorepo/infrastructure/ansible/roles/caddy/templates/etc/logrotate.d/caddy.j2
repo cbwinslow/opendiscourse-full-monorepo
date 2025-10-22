@@ -1,0 +1,20 @@
+# {{ ansible_managed }}
+{{ caddy_log_dir | default('/var/log/caddy') }}/*.log {
+    daily
+    rotate {{ caddy_logging.rotation.max_backups | default(10) }}
+    size {{ caddy_logging.rotation.max_size | default('100M') }}
+    missingok
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+    dateext
+    dateformat -%Y%m%d-%H%M%S
+    sharedscripts
+    postrotate
+        # Reload Caddy to write to new log file
+        if systemctl is-active --quiet caddy; then
+            systemctl reload caddy > /dev/null 2>&1 || true
+        fi
+    endscript
+}

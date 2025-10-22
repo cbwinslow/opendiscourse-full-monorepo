@@ -1,0 +1,846 @@
+openapi: 3.0.0
+info:
+  title: OpenStates API v3
+  description: API for accessing state legislative information
+  version: 3.0.0
+servers:
+  - url: https://v3.openstates.org
+    description: Production server
+paths:
+  /jurisdictions:
+    get:
+      summary: List all available jurisdictions
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Results per page
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: List of jurisdictions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Jurisdiction'
+                  meta:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total_pages:
+                        type: integer
+        '401':
+          description: Invalid API Key
+  /jurisdictions/{jurisdiction_id}:
+    get:
+      summary: Get detailed metadata for a particular jurisdiction
+      parameters:
+        - name: jurisdiction_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Jurisdiction details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Jurisdiction'
+        '404':
+          description: Jurisdiction not found
+  /people:
+    get:
+      summary: List or search people (legislators, governors, etc.)
+      parameters:
+        - name: name
+          in: query
+          description: Filter by name
+          required: false
+          schema:
+            type: string
+        - name: jurisdiction
+          in: query
+          description: Filter by jurisdiction ID
+          required: false
+          schema:
+            type: string
+        - name: district
+          in: query
+          description: Filter by district
+          required: false
+          schema:
+            type: string
+        - name: chamber
+          in: query
+          description: Filter by chamber (upper/lower)
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Results per page
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: List of people
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Person'
+        '401':
+          description: Invalid API Key
+  /people.geo:
+    get:
+      summary: Get legislators for a given location
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: float
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: float
+      responses:
+        '200':
+          description: List of people representing the location
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Person'
+        '401':
+          description: Invalid API Key
+  /people/{person_id}:
+    get:
+      summary: Get detailed information about a specific person
+      parameters:
+        - name: person_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Person details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+        '404':
+          description: Person not found
+  /bills:
+    get:
+      summary: Search bills by various criteria
+      parameters:
+        - name: jurisdiction
+          in: query
+          description: Filter by jurisdiction ID
+          required: false
+          schema:
+            type: string
+        - name: session
+          in: query
+          description: Filter by session
+          required: false
+          schema:
+            type: string
+        - name: chamber
+          in: query
+          description: Filter by chamber
+          required: false
+          schema:
+            type: string
+        - name: sponsor
+          in: query
+          description: Filter by sponsor ID
+          required: false
+          schema:
+            type: string
+        - name: subject
+          in: query
+          description: Filter by subject
+          required: false
+          schema:
+            type: string
+        - name: updated_since
+          in: query
+          description: Filter by updated date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: created_since
+          in: query
+          description: Filter by created date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: search
+          in: query
+          description: Full text search
+          required: false
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: Sort field (created_at, updated_at)
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Results per page
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: List of bills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bill'
+        '401':
+          description: Invalid API Key
+  /bills/ocd-bill/{uuid}:
+    get:
+      summary: Get bill by internal ID
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bill details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '404':
+          description: Bill not found
+  /bills/{jurisdiction}/{session}/{id}:
+    get:
+      summary: Get bill by jurisdiction, session, and ID
+      parameters:
+        - name: jurisdiction
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: session
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bill details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '404':
+          description: Bill not found
+  /committees:
+    get:
+      summary: Get list of committees by jurisdiction
+      parameters:
+        - name: jurisdiction
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Results per page
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: List of committees
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Committee'
+        '401':
+          description: Invalid API Key
+  /committees/{committee_id}:
+    get:
+      summary: Get details on committee by internal ID
+      parameters:
+        - name: committee_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Committee details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+        '404':
+          description: Committee not found
+  /events:
+    get:
+      summary: Get list of events by jurisdiction
+      parameters:
+        - name: jurisdiction
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Results per page
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+        '401':
+          description: Invalid API Key
+  /events/{event_id}:
+    get:
+      summary: Get details on event by internal ID
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          description: Event not found
+components:
+  schemas:
+    Jurisdiction:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        classification:
+          type: string
+        division:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        url:
+          type: string
+        legislative_sessions:
+          type: array
+          items:
+            type: object
+            properties:
+              identifier:
+                type: string
+              name:
+                type: string
+              classification:
+                type: string
+              start_date:
+                type: string
+                format: date
+              end_date:
+                type: string
+                format: date
+    Person:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        email:
+          type: string
+        gender:
+          type: string
+        biography:
+          type: string
+        birth_date:
+          type: string
+          format: date
+        image:
+          type: string
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              note:
+                type: string
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              note:
+                type: string
+        party:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+        roles:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              district:
+                type: string
+              jurisdiction:
+                type: string
+              start_date:
+                type: string
+                format: date
+    Bill:
+      type: object
+      properties:
+        id:
+          type: string
+        session:
+          type: string
+        jurisdiction:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        identifier:
+          type: string
+        title:
+          type: string
+        classification:
+          type: array
+          items:
+            type: string
+        subject:
+          type: array
+          items:
+            type: string
+        extras:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        openstates_url:
+          type: string
+        sponsorships:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              entity_type:
+                type: string
+              primary:
+                type: boolean
+              classification:
+                type: string
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              organization:
+                type: object
+                properties:
+                  name:
+                    type: string
+              description:
+                type: string
+              date:
+                type: string
+                format: date
+              classification:
+                type: array
+                items:
+                  type: string
+              order:
+                type: integer
+        votes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              motion_text:
+                type: string
+              result:
+                type: string
+              date:
+                type: string
+                format: date
+              organization:
+                type: object
+                properties:
+                  name:
+                    type: string
+        versions:
+          type: array
+          items:
+            type: object
+            properties:
+              note:
+                type: string
+              date:
+                type: string
+                format: date
+              links:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                    media_type:
+                      type: string
+        documents:
+          type: array
+          items:
+            type: object
+            properties:
+              note:
+                type: string
+              date:
+                type: string
+                format: date
+              links:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                    media_type:
+                      type: string
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              note:
+                type: string
+    Committee:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        chamber:
+          type: string
+        jurisdiction:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        members:
+          type: array
+          items:
+            type: object
+            properties:
+              person:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+              role:
+                type: string
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              note:
+                type: string
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              note:
+                type: string
+        extras:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        jurisdiction:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        description:
+          type: string
+        classification:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        all_day:
+          type: boolean
+        status:
+          type: string
+        location:
+          type: object
+          properties:
+            name:
+              type: string
+            url:
+              type: string
+        media:
+          type: array
+          items:
+            type: object
+            properties:
+              note:
+                type: string
+              date:
+                type: string
+                format: date
+              links:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                    media_type:
+                      type: string
+        documents:
+          type: array
+          items:
+            type: object
+            properties:
+              note:
+                type: string
+              date:
+                type: string
+                format: date
+              links:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                    media_type:
+                      type: string
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              note:
+                type: string
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              note:
+                type: string
+        participants:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              entity_type:
+                type: string
+              note:
+                type: string
+        agenda:
+          type: array
+          items:
+            type: object
+            properties:
+              description:
+                type: string
+              order:
+                type: integer
+              subjects:
+                type: array
+                items:
+                  type: string
+              media:
+                type: array
+                items:
+                  type: object
+              notes:
+                type: array
+                items:
+                  type: string
+              related_entities:
+                type: array
+                items:
+                  type: object
+        extras:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time

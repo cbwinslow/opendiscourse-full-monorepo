@@ -1,0 +1,11 @@
+config:
+  opendiscourse-cloudflare:accountId:
+    value: "your-account-id"
+  opendiscourse-cloudflare:zoneId:
+    value: "your-zone-id"
+  opendiscourse-cloudflare:databaseHost:
+    value: "your-database-host"
+  opendiscourse-cloudflare:databaseUser:
+    value: "your-database-user"
+  opendiscourse-cloudflare:databasePassword:
+    secret: true

@@ -1,0 +1,281 @@
+import os
+import logging
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+import json
+import numpy as np
+from datetime import datetime
+import psycopg2
+from psycopg2.extras import Json
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+from opensearchpy import OpenSearch, helpers
+from sentence_transformers import SentenceTransformer
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/app/logs/vector_bridge.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI
+app = FastAPI(title="Vector Bridge Service")
+
+# Initialize encoder model
+encoder = SentenceTransformer('all-MiniLM-L6-v2')
+EMBEDDING_DIM = 384  # Dimension of the all-MiniLM-L6-v2 model
+
+# Environment variables
+OPENSEARCH_HOST = os.getenv('OPENSEARCH_HOST', 'opensearch')
+OPENSEARCH_PORT = int(os.getenv('OPENSEARCH_PORT', '9200'))
+QDRANT_URL = os.getenv('QDRANT_URL', 'http://qdrant:6333')
+POSTGRES_DSN = os.getenv('POSTGRES_DSN', 'postgresql://postgres:postgres@pgvector:5432/vector_db')
+
+# Initialize clients
+opensearch = OpenSearch(
+    hosts=[{'host': OPENSEARCH_HOST, 'port': OPENSEARCH_PORT}],
+    http_compress=True,
+    use_ssl=False,
+    verify_certs=False,
+    ssl_show_warn=False
+)
+
+qdrant = QdrantClient(url=QDRANT_URL)
+pg_conn = psycopg2.connect(POSTGRES_DSN)
+
+class Document(BaseModel):
+    id: str
+    text: str
+    metadata: Optional[Dict[str, Any]] = None
+
+class SearchQuery(BaseModel):
+    query: str
+    top_k: int = 5
+    min_score: float = 0.5
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize connections and ensure collections exist."""
+    try:
+        # Ensure Qdrant collection exists
+        collections = qdrant.get_collections()
+        collection_names = [collection.name for collection in collections.collections]
+        
+        if 'logs' not in collection_names:
+            qdrant.create_collection(
+                collection_name='logs',
+                vectors_config={
+                    'text': models.VectorParams(
+                        size=EMBEDDING_DIM,
+                        distance=models.Distance.COSINE
+                    )
+                }
+            )
+            logger.info("Created Qdrant collection 'logs'")
+        
+        # Ensure PostgreSQL tables exist
+        with pg_conn.cursor() as cur:
+            # Create logs table if not exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS logs (
+                    id TEXT PRIMARY KEY,
+                    text TEXT NOT NULL,
+                    embedding VECTOR(384),
+                    metadata JSONB,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            pg_conn.commit()
+            logger.info("Ensured PostgreSQL tables exist")
+            
+    except Exception as e:
+        logger.error(f"Error during startup: {str(e)}")
+        raise
+
+def get_embedding(text: str) -> List[float]:
+    """Generate embedding for the given text."""
+    return encoder.encode(text).tolist()
+
+@app.post("/ingest")
+async def ingest_document(doc: Document):
+    """Ingest a document into all storage systems."""
+    try:
+        # Generate embedding
+        embedding = get_embedding(doc.text)
+        
+        # Store in OpenSearch
+        opensearch.index(
+            index="documents",
+            id=doc.id,
+            body={
+                "text": doc.text,
+                "embedding": embedding,
+                "metadata": doc.metadata or {},
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+        
+        # Store in Qdrant
+        qdrant.upsert(
+            collection_name="logs",
+            points=[
+                models.PointStruct(
+                    id=doc.id,
+                    vector={"text": embedding},
+                    payload={
+                        "text": doc.text,
+                        "metadata": doc.metadata or {},
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                )
+            ]
+        )
+        
+        # Store in PostgreSQL
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO logs (id, text, embedding, metadata)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE
+                SET text = EXCLUDED.text,
+                    embedding = EXCLUDED.embedding,
+                    metadata = EXCLUDED.metadata,
+                    updated_at = NOW()
+                """,
+                (doc.id, doc.text, embedding, Json(doc.metadata or {}))
+            )
+            pg_conn.commit()
+        
+        return {"status": "success", "message": f"Document {doc.id} ingested successfully"}
+    
+    except Exception as e:
+        logger.error(f"Error ingesting document: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/search")
+async def search_documents(query: SearchQuery):
+    """Search across all storage systems."""
+    try:
+        # Generate query embedding
+        query_embedding = get_embedding(query.query)
+        
+        # Search in Qdrant
+        qdrant_results = qdrant.search(
+            collection_name="logs",
+            query_vector=("text", query_embedding),
+            limit=query.top_k,
+            score_threshold=query.min_score
+        )
+        
+        # Search in PostgreSQL using pgvector
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, text, metadata, 
+                       1 - (embedding <=> %s) as score
+                FROM logs
+                WHERE 1 - (embedding <=> %s) > %s
+                ORDER BY embedding <=> %s
+                LIMIT %s
+                """,
+                (query_embedding, query_embedding, query.min_score, 
+                 query_embedding, query.top_k)
+            )
+            pg_results = [
+                {
+                    "id": row[0],
+                    "text": row[1],
+                    "metadata": row[2],
+                    "score": float(row[3])
+                }
+                for row in cur.fetchall()
+            ]
+        
+        # Search in OpenSearch
+        script_query = {
+            "script_score": {
+                "query": {"match_all": {}},
+                "script": {
+                    "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
+                    "params": {"query_vector": query_embedding}
+                }
+            }
+        }
+        
+        os_results = opensearch.search(
+            index="documents",
+            body={
+                "query": script_query,
+                "size": query.top_k,
+                "min_score": query.min_score,
+                "_source": ["text", "metadata"]
+            }
+        )
+        
+        # Combine and deduplicate results
+        results = []
+        seen_ids = set()
+        
+        # Add Qdrant results
+        for hit in qdrant_results:
+            if hit.id not in seen_ids:
+                results.append({
+                    "id": hit.id,
+                    "text": hit.payload.get("text", ""),
+                    "metadata": hit.payload.get("metadata", {}),
+                    "score": hit.score,
+                    "source": "qdrant"
+                })
+                seen_ids.add(hit.id)
+        
+        # Add PostgreSQL results
+        for hit in pg_results:
+            if hit["id"] not in seen_ids:
+                results.append({
+                    **hit,
+                    "source": "postgresql"
+                })
+                seen_ids.add(hit["id"])
+        
+        # Add OpenSearch results
+        for hit in os_results.get("hits", {}).get("hits", []):
+            if hit["_id"] not in seen_ids:
+                results.append({
+                    "id": hit["_id"],
+                    "text": hit.get("_source", {}).get("text", ""),
+                    "metadata": hit.get("_source", {}).get("metadata", {}),
+                    "score": hit.get("_score", 0),
+                    "source": "opensearch"
+                })
+                seen_ids.add(hit["_id"])
+        
+        # Sort by score in descending order
+        results.sort(key=lambda x: x.get("score", 0), reverse=True)
+        
+        return {
+            "query": query.query,
+            "results": results[:query.top_k],
+            "total": len(results)
+        }
+    
+    except Exception as e:
+        logger.error(f"Error searching documents: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "vector_bridge.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )

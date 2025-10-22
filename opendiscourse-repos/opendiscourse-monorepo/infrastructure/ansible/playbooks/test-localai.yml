@@ -1,0 +1,64 @@
+---
+# Test playbook for LocalAI role
+- name: Test LocalAI Installation
+  hosts: test_server
+  become: true
+  vars:
+    # Override any test-specific variables here
+    local_ai_port: 8090  # Use a different port for testing
+    local_ai_gpu_enabled: false  # Disable GPU for testing
+    local_ai_download_models: true
+    local_ai_models_to_download:
+      - name: gpt4all-j
+        url: "https://gpt4all.io/models/ggml-gpt4all-j-v1.3-groovy.bin"
+        filename: "ggml-gpt4all-j-v1.3-groovy.bin"
+        sha256: ""  # Skip verification in test
+
+  roles:
+    - role: local-ai
+      tags: [local-ai, test]
+
+  post_tasks:
+    - name: Wait for LocalAI to start
+      ansible.builtin.wait_for:
+        port: "{{ local_ai_port }}"
+        timeout: 300
+        delay: 10
+      register: localai_ready
+      until: localai_ready is success
+      retries: 5
+      delay: 10
+      changed_when: false
+      tags: [local-ai, test]
+
+    - name: Test LocalAI API
+      ansible.builtin.uri:
+        url: "http://localhost:{{ local_ai_port }}/v1/models"
+        method: GET
+        status_code: 200
+        timeout: 30
+      register: localai_test
+      changed_when: false
+      tags: [local-ai, test]
+
+    - name: Show LocalAI test results
+      ansible.builtin.debug:
+        var: localai_test.json
+      when: localai_test is defined
+      tags: [local-ai, test]
+
+    - name: Verify model download
+      ansible.builtin.stat:
+        path: "{{ local_ai_models_dir }}/{{ item.filename }}"
+      loop: "{{ local_ai_models_to_download }}"
+      register: model_files
+      changed_when: false
+      tags: [local-ai, test]
+
+    - name: Show downloaded models
+      ansible.builtin.debug:
+        msg: "Found model: {{ item.stat.path }}"
+      loop: "{{ model_files.results }}"
+      when: item.stat is defined and item.stat.exists
+      changed_when: false
+      tags: [local-ai, test]

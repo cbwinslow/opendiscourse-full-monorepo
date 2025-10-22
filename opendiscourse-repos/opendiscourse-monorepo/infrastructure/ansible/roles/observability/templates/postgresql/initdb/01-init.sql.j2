@@ -1,0 +1,70 @@
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Create logs table with vector support
+CREATE TABLE IF NOT EXISTS logs (
+    id TEXT PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL,
+    message TEXT,
+    metadata JSONB,
+    vector_embedding VECTOR(1536),  -- Standard embedding size for many models
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create index for vector similarity search
+CREATE INDEX IF NOT EXISTS logs_vector_idx ON logs USING ivfflat (vector_embedding vector_cosine_ops);
+
+-- Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for updated_at
+DROP TRIGGER IF EXISTS update_logs_updated_at ON logs;
+CREATE TRIGGER update_logs_updated_at
+BEFORE UPDATE ON logs
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Create metrics table for Prometheus metrics
+CREATE TABLE IF NOT EXISTS metrics (
+    id SERIAL PRIMARY KEY,
+    metric_name TEXT NOT NULL,
+    metric_value DOUBLE PRECISION,
+    labels JSONB,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    vector_embedding VECTOR(1536)
+);
+
+-- Create index for time-series queries
+CREATE INDEX IF NOT EXISTS metrics_timestamp_idx ON metrics (timestamp);
+CREATE INDEX IF NOT EXISTS metrics_name_idx ON metrics (metric_name);
+
+-- Create vector search function
+CREATE OR REPLACE FUNCTION semantic_search(
+    query_embedding VECTOR(1536),
+    similarity_threshold FLOAT,
+    match_count INT
+)
+RETURNS TABLE (
+    id TEXT,
+    message TEXT,
+    similarity FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        l.id,
+        l.message,
+        1 - (l.vector_embedding <=> query_embedding) AS similarity
+    FROM logs l
+    WHERE 1 - (l.vector_embedding <=> query_embedding) > similarity_threshold
+    ORDER BY l.vector_embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$ LANGUAGE plpgsql;

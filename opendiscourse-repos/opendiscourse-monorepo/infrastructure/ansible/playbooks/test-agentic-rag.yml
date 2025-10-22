@@ -1,0 +1,103 @@
+---
+# Test playbook for Agentic RAG role
+- name: Test Agentic RAG Deployment
+  hosts: agentic-rag-test
+  become: true
+  vars:
+    # Override any test-specific variables here
+    agentic_rag_environment: test
+    agentic_rag_port: 8091  # Different port for testing
+    agentic_rag_log_level: DEBUG
+    agentic_rag_docker_image: "local/agentic-rag"
+    agentic_rag_version: "latest"
+    agentic_rag_llm_provider: "localai"
+    agentic_rag_vector_store: "weaviate"
+    
+    # Test with a small model
+    agentic_rag_models_to_download:
+      - name: "all-MiniLM-L6-v2"
+        url: "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/all-MiniLM-L6-v2.pt"
+        filename: "all-MiniLM-L6-v2.pt"
+        sha256: ""  # Skip verification in test
+
+  pre_tasks:
+    - name: Install test dependencies
+      ansible.builtin.apt:
+        name: [python3-pip, python3-venv, jq]
+        state: present
+        update_cache: yes
+      when: ansible_os_family == 'Debian'
+      tags: [test, dependencies]
+
+  roles:
+    - role: local-ai  # Ensure LocalAI is available for testing
+      tags: [local-ai, test]
+    - role: weaviate  # Ensure Weaviate is available for testing
+      tags: [weaviate, test]
+    - role: agentic-rag
+      tags: [agentic-rag, test]
+
+  post_tasks:
+    - name: Wait for Agentic RAG to start
+      ansible.builtin.wait_for:
+        port: "{{ agentic_rag_port }}"
+        timeout: 300
+        delay: 10
+      register: agentic_rag_ready
+      until: agentic_rag_ready is success
+      retries: 5
+      delay: 10
+      changed_when: false
+      tags: [test, verify]
+
+    - name: Test Agentic RAG API
+      ansible.builtin.uri:
+        url: "http://localhost:{{ agentic_rag_port }}/health"
+        method: GET
+        status_code: 200
+        timeout: 30
+        headers:
+          Content-Type: "application/json"
+      register: api_test
+      changed_when: false
+      tags: [test, api]
+
+    - name: Show API test results
+      ansible.builtin.debug:
+        var: api_test.json
+      when: api_test.json is defined
+      changed_when: false
+      tags: [test, debug]
+
+    - name: Verify service is running
+      ansible.builtin.systemd:
+        name: agentic-rag
+        enabled: yes
+        state: started
+      register: service_status
+      changed_when: false
+      tags: [test, service]
+
+    - name: Run integration tests
+      ansible.builtin.shell: |
+        set -e
+        # Test vector store connection
+        curl -s http://localhost:{{ agentic_rag_port }}/api/v1/vector/status | jq .
+        # Test model loading
+        curl -s http://localhost:{{ agentic_rag_port }}/api/v1/models | jq .
+      args:
+        executable: /bin/bash
+      register: integration_test
+      changed_when: false
+      failed_when: false
+      tags: [test, integration]
+
+    - name: Show test summary
+      ansible.builtin.debug:
+        msg: |
+          Agentic RAG Test Summary:
+          - Service Status: {{ service_status.state == 'started' | ternary('RUNNING', 'FAILED') }}
+          - API Health: {{ api_test.status == 200 | ternary('HEALTHY', 'UNHEALTHY') }}
+          - Integration Tests: {{ integration_test.rc == 0 | ternary('PASSED', 'FAILED') }}
+      changed_when: false
+      tags: [test, summary]

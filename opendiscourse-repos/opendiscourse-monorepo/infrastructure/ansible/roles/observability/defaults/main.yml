@@ -1,0 +1,198 @@
+---
+# Base configuration
+observability_dir: "/opt/observability"
+observability_service_name: "observability"
+
+# OpenSearch configuration
+opensearch_version: "2.8.0"
+opensearch_heap_size: "1g"
+opensearch_data_dir: "/var/lib/opensearch"
+opensearch_port: 9200
+opensearch_dashboards_port: 5601
+
+# Logstash configuration
+logstash_version: "8.9.0"
+logstash_http_port: 5044
+logstash_tcp_port: 5000
+logstash_java_opts: "-Xms1g -Xmx1g"
+
+# Filebeat configuration
+filebeat_version: "8.9.0"
+
+# Qdrant configuration
+qdrant_version: "latest"
+qdrant_http_port: 6333
+qdrant_grpc_port: 6334
+qdrant_collection_name: "logs"
+qdrant_vector_size: 1536
+
+# PostgreSQL with pgvector configuration
+postgres_version: "15-alpine"
+postgres_user: "postgres"
+postgres_password: "{{ lookup('env', 'POSTGRES_PASSWORD') | default('postgres', true) }}"
+postgres_db: "vector_db"
+postgres_port: 5432
+postgres_data_dir: "/var/lib/postgresql/data"
+
+# Vector Bridge configuration
+vector_bridge_version: "latest"
+vector_bridge_port: 8000
+
+# Service ports
+grafana_port: 3000
+prometheus_port: 9090
+loki_port: 3100
+promtail_port: 9080
+
+# Resource limits
+opensearch_mem_limit: "2g"
+logstash_mem_limit: "1g"
+filebeat_mem_limit: "512m"
+qdrant_mem_limit: "2g"
+postgres_mem_limit: "1g"
+vector_bridge_mem_limit: "1g"
+
+# Enable/disable components
+enable_opensearch: true
+enable_opensearch_dashboards: true
+enable_logstash: true
+enable_filebeat: true
+enable_qdrant: true
+enable_postgres: true
+enable_vector_bridge: true
+
+# Retention settings
+log_retention_days: 30
+metric_retention_days: 90
+trace_retention_days: 7
+
+# Monitoring settings
+metrics_scrape_interval: "15s"
+metrics_scrape_timeout: "10s"
+metrics_evaluation_interval: "15s"
+
+# Alerting settings
+alertmanager_enabled: true
+alertmanager_config_dir: "/etc/alertmanager"
+
+grafana_admin_user: "admin"
+grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') | default('admin', true) }}"
+
+# Integration settings
+opensearch_username: "admin"
+opensearch_password: "{{ lookup('env', 'OPENSEARCH_PASSWORD') | default('admin', true) }}"
+
+# Node exporter settings
+node_exporter_enabled: true
+node_exporter_port: 9100
+
+# cAdvisor settings
+cadvisor_enabled: true
+cadvisor_port: 8080
+
+# TLS settings
+tls_enabled: false
+tls_cert_file: ""
+tls_key_file: ""
+tls_ca_file: ""
+
+# Backup settings
+backup_enabled: true
+backup_schedule: "0 2 * * *"  # Daily at 2 AM
+backup_retention_days: 7
+backup_dir: "/var/backups/observability"
+
+# High availability settings
+replica_count: 1
+shard_count: 1
+
+# Resource requests and limits
+resources_requests_enabled: true
+resources_limits_enabled: true
+
+# Network settings
+network_name: "observability_net"
+network_driver: "bridge"
+
+# Storage settings
+storage_driver: "local"
+storage_opts: {}
+
+# Logging settings
+log_driver: "json-file"
+log_opts:
+  max-size: "10m"
+  max-file: "3"
+
+# Health check settings
+healthcheck_interval: "30s"
+healthcheck_timeout: "10s"
+healthcheck_retries: 3
+healthcheck_start_period: "60s"
+
+# Feature flags
+enable_ml: false
+enable_security: false
+enable_monitoring: true
+enable_alerting: true
+enable_tracing: true
+
+# External service integrations
+external_services:
+  prometheus: "http://prometheus:9090"
+  loki: "http://loki:3100"
+  grafana: "http://grafana:3000"
+  alertmanager: "http://alertmanager:9093"
+
+# Custom environment variables
+custom_env_vars: {}
+
+# Custom labels
+custom_labels: {}
+
+# Custom annotations
+custom_annotations: {}
+
+# Custom configurations
+custom_configs: {}
+
+# Service monitors
+service_monitors: []
+
+# Pod monitors
+pod_monitors: []
+
+# Prometheus rules
+prometheus_rules: []
+
+alerting_rules: []
+
+# Grafana dashboards
+grafana_dashboards: []
+
+# Grafana datasources
+grafana_datasources: []
+
+# Grafana notification channels
+grafana_notification_channels: []
+
+# Alertmanager configuration
+alertmanager_config: |
+  global:
+    resolve_timeout: 5m
+  route:
+    group_by: ['alertname']
+    group_wait: 10s
+    group_interval: 5m
+    repeat_interval: 3h
+    receiver: 'web.hook'
+  receivers:
+    - name: 'web.hook'
+      webhook_configs:
+        - url: 'http://127.0.0.1:5001/'
+  inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'dev', 'instance']

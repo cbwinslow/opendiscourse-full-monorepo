@@ -1,41 +1,38 @@
 {
-  "name": "opendiscourse",
+  "name": "opendiscourse-monorepo",
   "version": "1.0.0",
+  "description": "OpenDiscourse Monorepo - A platform for analyzing government documents and political discourse",
   "private": true,
-  "description": "Enterprise-grade platform for government document analysis and retrieval",
   "workspaces": [
-    "web",
-    "api"
+    "packages/*",
+    "apps/*",
+    "tools/*"
   ],
   "scripts": {
-    "dev": "pnpm --filter opendiscourse-web dev",
-    "build": "pnpm --filter opendiscourse-web build",
-    "start": "pnpm --filter opendiscourse-web start",
-    "lint": "pnpm --filter opendiscourse-web lint",
-    "test": "pnpm --filter opendiscourse-web test",
-    "type-check": "pnpm --filter opendiscourse-web type-check",
-    "clean": "pnpm --filter opendiscourse-web run clean && rm -rf node_modules/.cache",
-    "install:all": "pnpm install",
-    "dev:web": "pnpm --filter opendiscourse-web dev",
-    "build:web": "pnpm --filter opendiscourse-web build",
-    "deploy": "./deploy-local.sh",
-    "test:all": "./run-tests.sh all"
+    "dev": "pnpm --parallel --filter \"./packages/*\" --filter \"./apps/*\" run dev",
+    "build": "pnpm --filter \"./packages/*\" --filter \"./apps/*\" run build",
+    "test": "pnpm --recursive run test",
+    "lint": "pnpm --recursive run lint",
+    "clean": "rm -rf node_modules && pnpm --recursive exec rm -rf node_modules",
+    "format": "prettier --write ."
   },
   "keywords": [
-    "political-analysis",
-    "document-analysis",
+    "opendiscourse",
     "government-data",
-    "semantic-search",
+    "document-analysis",
+    "political-discourse",
     "nlp",
     "rag",
-    "nextjs",
-    "enterprise"
+    "vector-database"
   ],
-  "author": "OpenDiscourse Team",
+  "author": "OpenDiscourse Contributors",
   "license": "MIT",
+  "devDependencies": {
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
-  },
-  "packageManager": "pnpm@8.15.0"
+  }
 }

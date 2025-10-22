@@ -1,0 +1,56 @@
+# LocalAI logrotate configuration
+# Managed by Ansible - Do not edit manually
+
+{{ local_ai_logs_dir }}/*.log {
+    daily
+    missingok
+    rotate {{ local_ai_log_retention_days | default(30) }}
+    compress
+    delaycompress
+    notifempty
+    create 0640 {{ local_ai_user }} {{ local_ai_group }}
+    sharedscripts
+    postrotate
+        # Reload LocalAI to ensure logs are reopened after rotation
+        systemctl reload local-ai > /dev/null 2>&1 || true
+        
+        # Optional: Send SIGHUP to Docker containers to reopen log files
+        if [ -f {{ local_ai_base_dir }}/docker-compose.yml ]; then
+            cd {{ local_ai_base_dir }} && \
+            /usr/bin/docker-compose ps -q | xargs -r docker kill -s HUP
+        fi
+    endscript
+}
+
+# Include any additional log files from extra volumes
+{% for volume in local_ai_extra_volumes %}
+{% if '.log' in volume or '/log/' in volume %}
+{{ volume.split(':')[0] }}/*.log {
+    daily
+    missingok
+    rotate {{ local_ai_log_retention_days | default(30) }}
+    compress
+    delaycompress
+    notifempty
+    create 0640 {{ local_ai_user }} {{ local_ai_group }}
+    sharedscripts
+    postrotate
+        systemctl reload local-ai > /dev/null 2>&1 || true
+    endscript
+}
+{% endif %}
+{% endfor %}
+
+# Ensure proper permissions on log files
+{{ local_ai_logs_dir }}/* {
+    missingok
+    weekly
+    create 0640 {{ local_ai_user }} {{ local_ai_group }}
+    sharedscripts
+    postrotate
+        # Fix any permission issues after log rotation
+        chown -R {{ local_ai_user }}:{{ local_ai_group }} {{ local_ai_logs_dir }}
+        chmod -R 0640 {{ local_ai_logs_dir }}/*
+        find {{ local_ai_logs_dir }} -type d -exec chmod 0755 {} \;
+    endscript
+}

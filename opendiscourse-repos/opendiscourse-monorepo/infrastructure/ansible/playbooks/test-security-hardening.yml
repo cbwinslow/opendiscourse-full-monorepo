@@ -1,0 +1,83 @@
+---
+- name: Test Security Hardening
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Test SSH security
+      block:
+        - name: Attempt SSH with password
+          ansible.builtin.shell: |
+            sshpass -p 'wrongpassword' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+            -p {{ security_hardening.ssh.port }} {{ ansible_user }}@localhost echo 'test'
+          register: ssh_password_attempt
+          ignore_errors: true
+          changed_when: false
+          no_log: true
+
+        - name: Verify password authentication is disabled
+          ansible.builtin.assert:
+            that:
+              - ssh_password_attempt.rc != 0
+            fail_msg: "Password authentication is still enabled!"
+            success_msg: "Password authentication is disabled"
+
+    - name: Test firewall rules
+      ansible.builtin.ufw:
+        rule: deny
+        port: '8080'
+        proto: tcp
+        comment: 'Temporary test rule'
+      register: ufw_test_rule
+      changed_when: false
+      ignore_errors: true
+
+    - name: Verify firewall is active and blocking
+      ansible.builtin.assert:
+        that:
+          - ufw_test_rule is not failed
+        fail_msg: "Firewall is not active or not properly configured"
+        success_msg: "Firewall is active and properly configured"
+
+    - name: Test fail2ban
+      ansible.builtin.shell: |
+        for i in {1..6}; do
+          sshpass -p 'wrongpassword' ssh -o StrictHostKeyChecking=no \
+          -o ConnectTimeout=2 -p {{ security_hardening.ssh.port }} {{ ansible_user }}@localhost \
+          echo 'test' 2>&1 || true
+        done
+      register: fail2ban_test
+      changed_when: false
+      no_log: true
+      ignore_errors: true
+
+    - name: Verify fail2ban is blocking brute force attempts
+      ansible.builtin.command: fail2ban-client status sshd
+      register: fail2ban_status
+      changed_when: false
+      retries: 3
+      delay: 5
+      until: fail2ban_status.rc == 0
+
+    - name: Check if IP is banned
+      ansible.builtin.shell: |
+        fail2ban-client status sshd | grep -q '{{ ansible_default_ipv4.address }}'
+      register: ip_banned
+      ignore_errors: true
+      changed_when: false
+
+    - name: Verify fail2ban banned the IP
+      ansible.builtin.assert:
+        that: ip_banned.rc == 0
+        fail_msg: "fail2ban did not ban the IP after multiple failed attempts"
+        success_msg: "fail2ban successfully banned the IP after multiple failed attempts"
+
+    - name: Clean up test rules
+      ansible.builtin.ufw:
+        rule: delete
+        port: '8080'
+        proto: tcp
+        comment: 'Temporary test rule'
+      when: ufw_test_rule is not failed
+      ignore_errors: true

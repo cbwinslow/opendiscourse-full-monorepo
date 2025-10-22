@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>About OpenDiscourse</h1>
+        <p class="lead">Promoting government transparency through data analysis and public engagement.</p>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3>Our Mission</h3>
+                <p>OpenDiscourse aims to increase government transparency by providing a platform that tracks and analyzes the voting records and public statements of government officials. We believe that an informed citizenry is essential for a healthy democracy.</p>
+                
+                <h3>How It Works</h3>
+                <p>Our platform collects data from multiple government sources, including:</p>
+                <ul>
+                    <li>OpenStates - State legislative data</li>
+                    <li>Congress.gov - Federal legislative data</li>
+                    <li>GovInfo.gov - Official government publications</li>
+                    <li>OpenLegislation - New York State legislative data</li>
+                </ul>
+                <p>We then analyze this data to create comprehensive profiles of government officials and identify potential discrepancies between their voting behavior and public statements.</p>
+                
+                <h3>Key Features</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Member Profiles</h5>
+                        <p>Detailed profiles of government officials with voting records, sponsored bills, and public statements.</p>
+                        
+                        <h5>Discrepancy Detection</h5>
+                        <p>Automated identification of potential inconsistencies between voting behavior and public positions.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Search & Discovery</h5>
+                        <p>Powerful search capabilities to find members, bills, and legislation across all levels of government.</p>
+                        
+                        <h5>API Access</h5>
+                        <p>Comprehensive API for developers and researchers to access our data and build their own applications.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <h3>Technology</h3>
+                <p>OpenDiscourse is built with modern web technologies:</p>
+                <ul>
+                    <li>Python/Flask backend for data processing and API services</li>
+                    <li>PostgreSQL database for data storage</li>
+                    <li>Bootstrap 5 for responsive frontend design</li>
+                    <li>RESTful API architecture</li>
+                </ul>
+                
+                <h3>Data Sources</h3>
+                <p>All data is sourced from official government APIs and publications, ensuring accuracy and reliability. We do not collect any private or personal data beyond what is publicly available from government sources.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

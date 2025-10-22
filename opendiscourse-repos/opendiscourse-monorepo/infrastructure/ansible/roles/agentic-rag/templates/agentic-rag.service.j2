@@ -1,0 +1,19 @@
+[Unit]
+Description=Agentic RAG Service
+After=network.target local-ai.service weaviate.service
+
+[Service]
+Type=simple
+User={{ agentic_rag_user }}
+Group={{ agentic_rag_group }}
+WorkingDirectory={{ agentic_rag_base_dir }}
+Environment="PATH=/opt/venv/agentic-rag/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONPATH={{ agentic_rag_base_dir }}"
+Environment="CONFIG_PATH={{ agentic_rag_config_dir }}/config.yaml"
+ExecStart=/opt/venv/agentic-rag/bin/uvicorn app.main:app --host 0.0.0.0 --port {{ agentic_rag_port }} --workers {{ agentic_rag_max_workers }}
+Restart=always
+RestartSec=5s
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

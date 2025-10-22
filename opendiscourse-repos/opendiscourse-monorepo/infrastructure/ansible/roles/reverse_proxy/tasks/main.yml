@@ -1,0 +1,135 @@
+---
+- name: Install reverse proxy prerequisites
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+      - python3-certbot-dns-cloudflare
+    state: present
+
+- name: Install Traefik
+  block:
+    - name: Download Traefik
+      get_url:
+        url: "https://github.com/traefik/traefik/releases/download/v{{ traefik_version }}/traefik_v{{ traefik_version }}_linux_amd64.tar.gz"
+        dest: /tmp/traefik.tar.gz
+        validate_certs: yes
+
+    - name: Extract Traefik
+      unarchive:
+        src: /tmp/traefik.tar.gz
+        dest: /usr/local/bin/
+        remote_src: yes
+        copy: no
+        creates: /usr/local/bin/traefik
+
+    - name: Create Traefik user and group
+      user:
+        name: traefik
+        system: yes
+        create_home: no
+
+    - name: Create Traefik directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: traefik
+        group: traefik
+        mode: '0755'
+      loop:
+        - /etc/traefik
+        - /var/run/traefik
+        - /var/log/traefik
+
+    - name: Configure Traefik
+      template:
+        src: traefik.yml.j2
+        dest: /etc/traefik/traefik.yml
+        owner: traefik
+        group: traefik
+        mode: '0644'
+
+    - name: Create Traefik systemd service
+      template:
+        src: traefik.service.j2
+        dest: /etc/systemd/system/traefik.service
+        mode: '0644'
+
+    - name: Start and enable Traefik
+      systemd:
+        name: traefik
+        enabled: yes
+        state: started
+
+  when: reverse_proxy_type == 'traefik'
+
+- name: Install Nginx
+  block:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Create Nginx directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/nginx/conf.d
+        - /etc/nginx/sites-available
+        - /etc/nginx/sites-enabled
+        - /var/log/nginx
+
+    - name: Configure Nginx
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        mode: '0644'
+
+    - name: Create Nginx site configuration
+      template:
+        src: nginx-site.j2
+        dest: "/etc/nginx/sites-available/{{ item }}"
+        mode: '0644'
+      loop: "{{ nginx_sites }}"
+      notify: restart nginx
+
+    - name: Enable Nginx sites
+      file:
+        src: "/etc/nginx/sites-available/{{ item }}"
+        dest: "/etc/nginx/sites-enabled/{{ item }}"
+        state: link
+      loop: "{{ nginx_sites }}"
+
+    - name: Start and enable Nginx
+      systemd:
+        name: nginx
+        enabled: yes
+        state: started
+
+  when: reverse_proxy_type == 'nginx'
+
+- name: Configure SSL certificates
+  block:
+    - name: Obtain SSL certificate
+      certbot:
+        cert_name: "{{ item.domain }}"
+        domains: "{{ item.domains }}"
+        email: "{{ ssl_email }}"
+        webroot: "{{ item.webroot }}"
+        state: present
+      loop: "{{ ssl_certificates }}"
+
+    - name: Configure DNS challenge
+      certbot:
+        cert_name: "{{ item.domain }}"
+        domains: "{{ item.domains }}"
+        email: "{{ ssl_email }}"
+        dns_plugin: cloudflare
+        dns_plugin_credentials: "{{ lookup('file', cloudflare_credentials_file) }}"
+        state: present
+      loop: "{{ ssl_certificates }}"
+      when: cloudflare_enabled
+
+  notify: restart reverse_proxy

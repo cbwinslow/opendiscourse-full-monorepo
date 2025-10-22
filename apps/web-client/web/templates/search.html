@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Advanced Search</h1>
+        <p class="lead">Search government members, bills, and legislation with advanced filters.</p>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <form id="advanced-search-form">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="search-query" class="form-label">Search Terms</label>
+                            <input type="text" class="form-control" id="search-query" name="q" placeholder="Enter search terms..." value="{{ query }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="search-type" class="form-label">Search Type</label>
+                            <select class="form-select" id="search-type" name="type">
+                                <option value="all">All</option>
+                                <option value="members">Members</option>
+                                <option value="bills">Bills</option>
+                                <option value="votes">Votes</option>
+                                <option value="discrepancies">Discrepancies</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="jurisdiction" class="form-label">Jurisdiction</label>
+                            <select class="form-select" id="jurisdiction" name="jurisdiction">
+                                <option value="">All Jurisdictions</option>
+                                <option value="federal">Federal</option>
+                                <option value="state:ca">California</option>
+                                <option value="state:ny">New York</option>
+                                <option value="state:tx">Texas</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="party" class="form-label">Party</label>
+                            <select class="form-select" id="party" name="party">
+                                <option value="">All Parties</option>
+                                <option value="democratic">Democratic</option>
+                                <option value="republican">Republican</option>
+                                <option value="independent">Independent</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="date-range" class="form-label">Date Range</label>
+                            <select class="form-select" id="date-range" name="date_range">
+                                <option value="">All Time</option>
+                                <option value="30">Last 30 Days</option>
+                                <option value="90">Last 90 Days</option>
+                                <option value="365">Last Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end">
+                        <button type="reset" class="btn btn-outline-secondary me-2">Reset</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div id="search-results">
+            {% if query %}
+                <h2>Search Results for "{{ query }}"</h2>
+                <div id="results-content">
+                    <!-- Results will be loaded here -->
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h3>Enter search terms above to begin</h3>
+                    <p class="text-muted">Use advanced filters to narrow down your search results.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('advanced-search-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const params = new URLSearchParams();
+        
+        for (const [key, value] of formData.entries()) {
+            if (value) {
+                params.append(key, value);
+            }
+        }
+        
+        if (!params.has('q') || !params.get('q').trim()) {
+            alert('Please enter search terms');
+            return;
+        }
+        
+        // Show loading state
+        document.getElementById('results-content').innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Searching...</p>
+            </div>
+        `;
+        
+        // Perform search
+        fetch(`/api/search?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                displayResults(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('results-content').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Error performing search. Please try again.
+                    </div>
+                `;
+            });
+    });
+    
+    function displayResults(data) {
+        let html = '';
+        
+        if (data.members && data.members.length > 0) {
+            html += `
+                <h3>Members (${data.total_members})</h3>
+                <div class="row">
+            `;
+            
+            data.members.forEach(member => {
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            ${member.image_url ? 
+                                `<img src="${member.image_url}" class="card-img-top" alt="${member.name}" style="height: 150px; object-fit: cover;">` : 
+                                `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                    <i class="fas fa-user fa-2x text-muted"></i>
+                                </div>`
+                            }
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="/member/${member.id}" class="text-decoration-none">${member.name}</a>
+                                </h5>
+                                ${member.current_role ? `<p class="card-text"><small class="text-muted">${member.current_role}</small></p>` : ''}
+                                ${member.party ? `<span class="badge bg-secondary">${member.party}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        if (data.bills && data.bills.length > 0) {
+            html += `
+                <h3>Bills (${data.total_bills})</h3>
+                <div class="list-group">
+            `;
+            
+            data.bills.forEach(bill => {
+                html += `
+                    <a href="/bill/${bill.id}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">${bill.identifier}</h5>
+                        </div>
+                        <p class="mb-1">${bill.title}</p>
+                    </a>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        if (!data.members || data.members.length === 0 && (!data.bills || data.bills.length === 0)) {
+            html = `
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h3>No results found</h3>
+                    <p class="text-muted">Try different search terms or adjust your filters.</p>
+                </div>
+            `;
+        }
+        
+        document.getElementById('results-content').innerHTML = html;
+    }
+    
+    // If there's already a query, perform the search
+    {% if query %}
+    document.getElementById('advanced-search-form').dispatchEvent(new Event('submit'));
+    {% endif %}
+</script>
+{% endblock %}

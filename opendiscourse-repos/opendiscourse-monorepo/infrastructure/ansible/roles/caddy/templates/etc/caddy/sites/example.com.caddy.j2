@@ -1,0 +1,181 @@
+# {{ ansible_managed }}
+# Example site configuration for {{ item.name }}
+
+# Define the server block
+{{ item.server_name | default(item.name) }} {
+    # Logging
+    log {
+        output file {{ caddy_log_dir }}/{{ item.name }}.access.log {
+            roll_size {{ caddy_logging.rotation.max_size | default('100MB') }}
+            roll_keep {{ caddy_logging.rotation.max_backups | default(10) }}
+            roll_keep_for {{ caddy_logging.rotation.max_age | default(7) }}d
+        }
+        format json
+    }
+
+    # TLS/SSL Configuration
+    {% if item.tls | default(true) %}
+    tls {
+        issuer {{ caddy_ssl.issuer | default('letsencrypt') }}
+        protocols tls1.2 tls1.3
+        ciphers TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        curves x25519 secp521r1 secp384r1
+        alpn http/1.1 h2
+        key_type {{ caddy_ssl.key_type | default('p384') }}
+        
+        {% if caddy_ssl.email is defined and caddy_ssl.issuer == 'letsencrypt' %}
+        email {{ caddy_ssl.email }}
+        {% endif %}
+        
+        {% if caddy_ssl.staging | default(false) %}
+        ca https://acme-staging-v02.api.letsencrypt.org/directory
+        {% endif %}
+    }
+    {% endif %}
+
+    # Redirect www to non-www or vice versa
+    {% if item.redirect_www is defined and item.redirect_www %}
+    redir https://www.{{ item.name }}{uri} https://{{ item.name }}{uri} {{ http.response.code | default(301) }}
+    {% elif item.redirect_www is defined and not item.redirect_www %}
+    redir https://{{ item.name | regex_replace('^www\.', '') }}{uri} https://www.{{ item.name | regex_replace('^www\.', '') }}{uri} {{ http.response.code | default(301) }}
+    {% endif %}
+
+    # Security Headers
+    {% if caddy_security_headers.enabled | default(true) %}
+    header {
+        # Security Headers
+        {% if caddy_security_headers.strict_transport_security %}
+        Strict-Transport-Security "{{ caddy_security_headers.strict_transport_security }}"
+        {% endif %}
+        
+        {% if caddy_security_headers.x_content_type_options %}
+        X-Content-Type-Options "{{ caddy_security_headers.x_content_type_options }}"
+        {% endif %}
+        
+        {% if caddy_security_headers.x_frame_options %}
+        X-Frame-Options "{{ caddy_security_headers.x_frame_options }}"
+        {% endif %}
+        
+        {% if caddy_security_headers.x_xss_protection %}
+        X-XSS-Protection "{{ caddy_security_headers.x_xss_protection }}"
+        {% endif %}
+        
+        # Additional security headers
+        {% if caddy_security_headers.referrer_policy %}
+        Referrer-Policy "{{ caddy_security_headers.referrer_policy }}"
+        {% endif %}
+        
+        {% if caddy_security_headers.feature_policy %}
+        Feature-Policy "{{ caddy_security_headers.feature_policy }}"
+        {% endif %}
+        
+        {% if caddy_security_headers.permissions_policy %}
+        Permissions-Policy "{{ caddy_security_headers.permissions_policy }}"
+        {% endif %}
+        
+        {% if caddy_security_headers.content_security_policy %}
+        Content-Security-Policy "{{ caddy_security_headers.content_security_policy }}"
+        {% endif %}
+        
+        # Remove Server header
+        -Server
+    }
+    {% endif %}
+
+    # Gzip Compression
+    {% if item.gzip | default(true) %}
+    encode gzip
+    {% endif %}
+
+    # Rate Limiting
+    {% if item.rate_limit.enabled | default(caddy_rate_limit.enabled | default(true)) %}
+    @ratelimit {
+        not remote_ip {{ item.rate_limit.except | default(caddy_rate_limit.except) | default(['127.0.0.1', '::1', '10.0.0.0/8']) | join(' ') }}
+    }
+    route @ratelimit {
+        rate_limit {
+            zone {{ item.rate_limit.zone | default(caddy_rate_limit.zone) | default('default') }} {
+                key {{ item.rate_limit.key | default(caddy_rate_limit.key) | default('{http.request.remote.host}') }}
+                rate {{ item.rate_limit.rate | default(caddy_rate_limit.rate) | default('100/1m') }}
+                burst {{ item.rate_limit.burst | default(caddy_rate_limit.burst) | default(100) }}
+            }
+        }
+    }
+    {% endif %}
+
+    # Handle file requests first, if root is specified
+    {% if item.root is defined %}
+    root * {{ item.root }}
+    file_server {
+        precompressed gzip
+        browse
+    }
+    {% endif %}
+
+    # Reverse proxy configuration
+    {% if item.reverse_proxy is defined %}
+    route {
+        # Health check endpoint
+        {% if caddy_monitoring.health_check | default(true) %}
+        @health {
+            path /health
+            method GET
+        }
+        respond @health 200 {
+            body "OK"
+        }
+        {% endif %}
+
+        # Metrics endpoint
+        {% if caddy_monitoring.prometheus | default(true) %}
+        @metrics {
+            path {{ caddy_monitoring.metrics_path | default('/metrics') }}
+        }
+        respond @metrics 200 {
+            body ""
+        }
+        {% endif %}
+
+        # Main reverse proxy
+        reverse_proxy {{ item.reverse_proxy | join(' ') }} {
+            transport http {
+                tls
+                tls_insecure_skip_verify
+                keepalive off
+            }
+            
+            # Load balancing
+            lb_policy first
+            lb_try_duration 30s
+            
+            # Health checks
+            health_uri {{ caddy_monitoring.health_path | default('/health') }}
+            health_interval 30s
+            health_timeout 5s
+            
+            # Headers
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up Host {host}
+        }
+    }
+    {% endif %}
+
+    # Error handling
+    handle_errors {
+        @5xx {
+            expression {http.error.status_code} >= 500
+        }
+        respond @5xx "Internal Server Error" {
+            status_code 500
+        }
+        
+        @4xx {
+            expression {http.error.status_code} >= 400
+        }
+        respond @4xx "Bad Request" {
+            status_code {http.error.status_code}
+        }
+    }
+}

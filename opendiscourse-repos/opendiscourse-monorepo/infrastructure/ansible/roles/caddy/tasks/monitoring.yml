@@ -1,0 +1,222 @@
+---
+# Monitoring and logging configuration for Caddy
+
+- name: Validate monitoring configuration
+  ansible.builtin.assert:
+    that:
+      - "caddy_monitoring is defined"
+      - "caddy_monitoring.enabled is defined"
+      - "caddy_monitoring.prometheus is defined"
+      - "caddy_monitoring.health_check is defined"
+    success_msg: "Monitoring configuration validation passed"
+    fail_msg: "Invalid monitoring configuration. Please check caddy_monitoring settings."
+  tags: [caddy, monitoring, validate]
+
+- name: Ensure monitoring directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    mode: '0750'
+  loop:
+    - "/etc/caddy/conf.d"
+    - "{{ caddy_log_dir }}/caddy"
+    - "{{ caddy_config_dir }}/monitoring"
+  tags: [caddy, monitoring, directories]
+
+- name: Configure Caddy logging
+  block:
+    - name: Ensure log directory exists
+      ansible.builtin.file:
+        path: "{{ caddy_log_dir }}"
+        state: directory
+        owner: "{{ caddy_user }}"
+        group: "{{ caddy_group }}"
+        mode: '0750'
+    
+    - name: Deploy logging configuration
+      ansible.builtin.template:
+        src: etc/caddy/conf.d/logging.json.j2
+        dest: /etc/caddy/conf.d/logging.json
+        owner: root
+        group: "{{ caddy_group }}"
+        mode: '0640'
+      register: logging_config
+      notify: restart caddy
+  
+  when: caddy_monitoring.enabled | default(true)
+  tags: [caddy, monitoring, logging]
+
+- name: Set up log rotation for Caddy
+  ansible.builtin.template:
+    src: etc/logrotate.d/caddy.j2
+    dest: /etc/logrotate.d/caddy
+    owner: root
+    group: root
+    mode: '0644'
+  when: caddy_monitoring.enabled | default(true) and caddy_logging.rotation.enabled | default(true)
+  tags: [caddy, monitoring, logrotate]
+
+- name: Configure Prometheus metrics endpoint
+  block:
+    - name: Deploy metrics endpoint configuration
+      ansible.builtin.template:
+        src: etc/caddy/conf.d/metrics.json.j2
+        dest: /etc/caddy/conf.d/metrics.json
+        owner: root
+        group: "{{ caddy_group }}"
+        mode: '0640'
+      register: metrics_config
+      notify: restart caddy
+    
+    - name: Ensure Prometheus configuration directory exists
+      ansible.builtin.file:
+        path: /etc/prometheus
+        state: directory
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+      when: '"prometheus" in group_names'
+    
+    - name: Configure Prometheus to scrape Caddy
+      ansible.builtin.template:
+        src: etc/prometheus/caddy.yml.j2
+        dest: /etc/prometheus/caddy.yml
+        owner: prometheus
+        group: prometheus
+        mode: '0640'
+      when: '"prometheus" in group_names'
+      notify: restart prometheus
+  
+  when: caddy_monitoring.enabled | default(true) and caddy_monitoring.prometheus | default(true)
+  tags: [caddy, monitoring, prometheus]
+
+- name: Configure health check endpoint
+  block:
+    - name: Deploy health check configuration
+      ansible.builtin.template:
+        src: etc/caddy/conf.d/health.json.j2
+        dest: /etc/caddy/conf.d/health.json
+        owner: root
+        group: "{{ caddy_group }}"
+        mode: '0640'
+      register: health_config
+      notify: restart caddy
+    
+    - name: Ensure healthcheck directory exists
+      ansible.builtin.file:
+        path: /etc/healthcheck
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: '"monitoring" in group_names'
+    
+    - name: Configure health check monitoring
+      ansible.builtin.template:
+        src: etc/healthcheck/caddy.json.j2
+        dest: /etc/healthcheck/caddy.json
+        owner: root
+        group: root
+        mode: '0644'
+      when: '"monitoring" in group_names'
+  
+  when: caddy_monitoring.enabled | default(true) and caddy_monitoring.health_check | default(true)
+  tags: [caddy, monitoring, healthcheck]
+
+- name: Configure log shipping to Loki
+  block:
+    - name: Install Promtail if not present
+      ansible.builtin.include_role:
+        name: promtail
+      when: '"monitoring" in group_names'
+      tags: [caddy, monitoring, loki, promtail]
+    
+    - name: Ensure Promtail configuration directory exists
+      ansible.builtin.file:
+        path: /etc/promtail
+        state: directory
+        owner: promtail
+        group: promtail
+        mode: '0755'
+      when: '"monitoring" in group_names'
+    
+    - name: Configure Promtail for Caddy logs
+      ansible.builtin.template:
+        src: etc/promtail/caddy.yml.j2
+        dest: /etc/promtail/caddy.yml
+        owner: promtail
+        group: promtail
+        mode: '0640'
+      when: '"monitoring" in group_names'
+      notify: restart promtail
+  
+  when: caddy_monitoring.enabled | default(true) and caddy_monitoring.loki.enabled | default(false)
+  tags: [caddy, monitoring, loki]
+
+- name: Configure alerting rules
+  block:
+    - name: Ensure Alertmanager configuration directory exists
+      ansible.builtin.file:
+        path: /etc/alertmanager
+        state: directory
+        owner: alertmanager
+        group: alertmanager
+        mode: '0755'
+      when: '"monitoring" in group_names'
+    
+    - name: Deploy Caddy alerting rules
+      ansible.builtin.template:
+        src: etc/alertmanager/caddy.rules.j2
+        dest: /etc/alertmanager/caddy.rules
+        owner: alertmanager
+        group: alertmanager
+        mode: '0640'
+      notify: reload alertmanager
+  
+  when: 
+    - caddy_monitoring.enabled | default(true)
+    - caddy_monitoring.alerting.enabled | default(false)
+    - '"monitoring" in group_names'
+  tags: [caddy, monitoring, alerting]
+
+- name: Configure Grafana dashboards
+  block:
+    - name: Ensure Grafana provisioning directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: grafana
+        group: grafana
+        mode: '0755'
+      loop:
+        - /etc/grafana/provisioning/dashboards
+        - /etc/grafana/dashboards
+      when: '"monitoring" in group_names'
+    
+    - name: Deploy Grafana dashboard provisioning
+      ansible.builtin.template:
+        src: etc/grafana/provisioning/dashboards/caddy.json.j2
+        dest: /etc/grafana/provisioning/dashboards/caddy.json
+        owner: grafana
+        group: grafana
+        mode: '0640'
+      when: '"monitoring" in group_names'
+      notify: restart grafana
+    
+    - name: Deploy Caddy dashboard
+      ansible.builtin.template:
+        src: etc/grafana/dashboards/caddy-dashboard.json.j2
+        dest: /etc/grafana/dashboards/caddy-dashboard.json
+        owner: grafana
+        group: grafana
+        mode: '0640'
+      when: '"monitoring" in group_names'
+      notify: restart grafana
+  
+  when: 
+    - caddy_monitoring.enabled | default(true)
+    - caddy_monitoring.grafana.enabled | default(false)
+    - '"monitoring" in group_names'
+  tags: [caddy, monitoring, grafana]

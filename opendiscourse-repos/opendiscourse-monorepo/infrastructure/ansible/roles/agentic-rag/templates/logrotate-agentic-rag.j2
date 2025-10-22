@@ -1,0 +1,56 @@
+# Logrotate configuration for Agentic RAG
+# Managed by Ansible - Do not edit manually
+
+{{ agentic_rag_log_dir }}/*.log {
+    daily
+    missingok
+    rotate {{ agentic_rag_log_retention_days | default(30) }}
+    compress
+    delaycompress
+    notifempty
+    create 0640 {{ agentic_rag_user }} {{ agentic_rag_group }}
+    sharedscripts
+    postrotate
+        # Reload Agentic RAG to ensure logs are reopened after rotation
+        systemctl reload agentic-rag > /dev/null 2>&1 || true
+        
+        # Optional: Send SIGHUP to Docker containers to reopen log files
+        if [ -f {{ agentic_rag_compose_file }} ]; then
+            cd {{ agentic_rag_base_dir }} && \
+            /usr/bin/docker-compose ps -q | xargs -r docker kill -s HUP
+        fi
+    endscript
+}
+
+# Include any additional log files from extra volumes
+{% for volume in agentic_rag_extra_volumes %}
+{% if '.log' in volume or '/log/' in volume %}
+{{ volume.split(':')[0] }}/*.log {
+    daily
+    missingok
+    rotate {{ agentic_rag_log_retention_days | default(30) }}
+    compress
+    delaycompress
+    notifempty
+    create 0640 {{ agentic_rag_user }} {{ agentic_rag_group }}
+    sharedscripts
+    postrotate
+        systemctl reload agentic-rag > /dev/null 2>&1 || true
+    endscript
+}
+{% endif %}
+{% endfor %}
+
+# Ensure proper permissions on log files
+{{ agentic_rag_log_dir }}/* {
+    missingok
+    weekly
+    create 0640 {{ agentic_rag_user }} {{ agentic_rag_group }}
+    sharedscripts
+    postrotate
+        # Fix any permission issues after log rotation
+        chown -R {{ agentic_rag_user }}:{{ agentic_rag_group }} {{ agentic_rag_log_dir }}
+        chmod -R 0640 {{ agentic_rag_log_dir }}/*
+        find {{ agentic_rag_log_dir }} -type d -exec chmod 0755 {} \;
+    endscript
+}

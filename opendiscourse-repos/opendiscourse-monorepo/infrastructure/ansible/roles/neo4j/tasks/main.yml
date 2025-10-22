@@ -1,0 +1,11 @@
+---
+- name: Create Neo4j directories
+  file:
+    path: "{{ neo4j_base_dir }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  with_items:
+    - data
+    - logs
+    - import
+    - plugins

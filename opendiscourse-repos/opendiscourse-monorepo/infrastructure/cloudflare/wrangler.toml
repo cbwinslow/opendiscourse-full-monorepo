@@ -1,0 +1,77 @@
+name = "opendiscourse"
+main = "src/worker.ts"
+compatibility_date = "2025-08-28"
+compatibility_flags = [ "nodejs_compat" ]
+account_id = "968ff4ee9f5e59bc6c72758269d6b9d6"
+
+# Main application
+[triggers]
+crons = ["*/15 * * * *"]
+
+# Environment variables
+[vars]
+NODE_ENV = "production"
+DOMAIN = "opendiscourse.net"
+
+# D1 Database for structured data
+[[d1_databases]]
+binding = "DB"
+database_name = "opendiscourse-db"
+database_id = "opendiscourse-db-id"
+
+# D1 for analytics
+[[d1_databases]]
+binding = "ANALYTICS_DB"
+database_name = "opendiscourse-analytics"
+database_id = "opendiscourse-analytics-id"
+
+# KV Namespaces
+[[kv_namespaces]]
+binding = "CACHE"
+id = "opendiscourse-cache-id"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "opendiscourse-sessions-id"
+
+# R2 Buckets
+[[r2_buckets]]
+binding = "DOCUMENTS"
+bucket_name = "opendiscourse-documents"
+
+[[r2_buckets]]
+binding = "MODELS"
+bucket_name = "opendiscourse-models"
+
+# Vectorize for embeddings
+[[vectorize]]
+binding = "VECTOR_INDEX"
+index_name = "opendiscourse-vector-index"
+
+# Queues for background processing
+[[queues.producers]]
+queue = "background-tasks"
+binding = "BACKGROUND_QUEUE"
+
+[[queues.consumers]]
+queue = "background-tasks"
+max_batch_size = 10
+max_batch_timeout = 10
+
+# AI Configuration
+[ai]
+binding = "AI"
+
+<<<<<<< HEAD
+# Build configuration removed - using direct main file
+
+=======
+>>>>>>> b0b10b9 (scaffold infra: terraform skeleton, CI deploy workflows, backup script and docs)
+# Environment overrides
+[env.production]
+name = "opendiscourse-prod"
+route = "opendiscourse.net/*"
+
+[env.staging]
+name = "opendiscourse-staging"
+route = "staging.opendiscourse.net/*"

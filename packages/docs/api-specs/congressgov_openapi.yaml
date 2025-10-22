@@ -1,0 +1,673 @@
+openapi: 3.0.0
+info:
+  title: Congress.gov API
+  description: Official API from the Library of Congress for accessing federal legislative information
+  version: 3.0.0
+servers:
+  - url: https://api.data.gov/congress/v3
+    description: Production server
+paths:
+  /bill:
+    get:
+      summary: Get list of bills
+      parameters:
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of bills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bill'
+        '401':
+          description: Invalid API Key
+  /bill/{bill_type}:
+    get:
+      summary: Get bills by type
+      parameters:
+        - name: bill_type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [introduced, updated, active, passed, enacted]
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of bills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bill'
+        '401':
+          description: Invalid API Key
+  /bill/{bill_type}/{congress}:
+    get:
+      summary: Get bills by type and congress
+      parameters:
+        - name: bill_type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [introduced, updated, active, passed, enacted]
+        - name: congress
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of bills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bill'
+        '401':
+          description: Invalid API Key
+  /bill/{bill_type}/{congress}/{chamber}:
+    get:
+      summary: Get bills by type, congress, and chamber
+      parameters:
+        - name: bill_type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [introduced, updated, active, passed, enacted]
+        - name: congress
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chamber
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [house, senate]
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of bills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bill'
+        '401':
+          description: Invalid API Key
+  /bill/{bill_id}:
+    get:
+      summary: Get detailed information about a specific bill
+      parameters:
+        - name: bill_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bill details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '404':
+          description: Bill not found
+  /member:
+    get:
+      summary: Get list of members of Congress
+      parameters:
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Member'
+        '401':
+          description: Invalid API Key
+  /member/{congress}:
+    get:
+      summary: Get members for specific congress
+      parameters:
+        - name: congress
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Member'
+        '401':
+          description: Invalid API Key
+  /member/{congress}/{chamber}:
+    get:
+      summary: Get members for specific congress and chamber
+      parameters:
+        - name: congress
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chamber
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [house, senate]
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Member'
+        '401':
+          description: Invalid API Key
+  /member/{member_id}:
+    get:
+      summary: Get detailed information about a specific member
+      parameters:
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Member details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '404':
+          description: Member not found
+  /member/{member_id}/votes:
+    get:
+      summary: Get voting history for a member
+      parameters:
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Voting history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vote'
+        '404':
+          description: Member not found
+  /committee:
+    get:
+      summary: Get list of committees
+      parameters:
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of committees
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Committee'
+        '401':
+          description: Invalid API Key
+  /committee/{congress}:
+    get:
+      summary: Get committees for specific congress
+      parameters:
+        - name: congress
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of committees
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Committee'
+        '401':
+          description: Invalid API Key
+  /committee/{congress}/{chamber}:
+    get:
+      summary: Get committees for specific congress and chamber
+      parameters:
+        - name: congress
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chamber
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [house, senate]
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of committees
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Committee'
+        '401':
+          description: Invalid API Key
+  /nomination:
+    get:
+      summary: Get list of nominations
+      parameters:
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of nominations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Nomination'
+        '401':
+          description: Invalid API Key
+  /nomination/{congress}:
+    get:
+      summary: Get nominations for specific congress
+      parameters:
+        - name: congress
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of nominations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Nomination'
+        '401':
+          description: Invalid API Key
+components:
+  schemas:
+    Bill:
+      type: object
+      properties:
+        bill_id:
+          type: string
+        bill_type:
+          type: string
+        number:
+          type: string
+        bill_uri:
+          type: string
+        title:
+          type: string
+        short_title:
+          type: string
+        sponsor_id:
+          type: string
+        congressdotgov_url:
+          type: string
+        govtrack_url:
+          type: string
+        introduced_date:
+          type: string
+          format: date
+        active:
+          type: boolean
+        last_vote:
+          type: string
+          format: date
+        house_passage:
+          type: string
+          format: date
+        senate_passage:
+          type: string
+          format: date
+        enacted:
+          type: string
+          format: date
+        vetoed:
+          type: string
+          format: date
+        cosponsors:
+          type: integer
+        cosponsors_by_party:
+          type: object
+          additionalProperties:
+            type: integer
+        committees:
+          type: string
+        primary_subject:
+          type: string
+        summary:
+          type: string
+        summary_short:
+          type: string
+        latest_major_action_date:
+          type: string
+          format: date
+        latest_major_action:
+          type: string
+    Member:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        short_title:
+          type: string
+        api_uri:
+          type: string
+        first_name:
+          type: string
+        middle_name:
+          type: string
+        last_name:
+          type: string
+        suffix:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        gender:
+          type: string
+        party:
+          type: string
+        leadership_role:
+          type: string
+        twitter_account:
+          type: string
+        facebook_account:
+          type: string
+        youtube_account:
+          type: string
+        govtrack_id:
+          type: string
+        cspan_id:
+          type: string
+        votesmart_id:
+          type: string
+        icpsr_id:
+          type: string
+        crp_id:
+          type: string
+        google_entity_id:
+          type: string
+        fec_candidate_id:
+          type: string
+        url:
+          type: string
+        rss_url:
+          type: string
+        contact_form:
+          type: string
+        in_office:
+          type: boolean
+        cook_pvi:
+          type: string
+        dw_nominate:
+          type: string
+        ideal_point:
+          type: string
+        seniority:
+          type: string
+        next_election:
+          type: string
+        total_votes:
+          type: integer
+        missed_votes:
+          type: integer
+        total_present:
+          type: integer
+        last_updated:
+          type: string
+          format: date-time
+        ocd_id:
+          type: string
+        office:
+          type: string
+        phone:
+          type: string
+        fax:
+          type: string
+        state:
+          type: string
+        senate_class:
+          type: string
+        state_rank:
+          type: string
+        district:
+          type: string
+        at_large:
+          type: boolean
+        geoid:
+          type: string
+        missed_votes_pct:
+          type: number
+          format: float
+        votes_with_party_pct:
+          type: number
+          format: float
+        votes_against_party_pct:
+          type: number
+          format: float
+    Vote:
+      type: object
+      properties:
+        member_id:
+          type: string
+        chamber:
+          type: string
+        congress:
+          type: string
+        session:
+          type: string
+        roll_call:
+          type: string
+        vote_uri:
+          type: string
+        bill:
+          type: object
+        amendment:
+          type: object
+        description:
+          type: string
+        question:
+          type: string
+        result:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+        position:
+          type: string
+    Committee:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        chamber:
+          type: string
+        url:
+          type: string
+        minority_url:
+          type: string
+    Nomination:
+      type: object
+      properties:
+        nomination_id:
+          type: string
+        number:
+          type: string
+        nomination_type:
+          type: string
+        received_date:
+          type: string
+          format: date
+        received_from:
+          type: string
+        status:
+          type: string
+        status_date:
+          type: string
+          format: date
+        committee_id:
+          type: string
+        committee_name:
+          type: string
+        nomination_title:
+          type: string
+        organization:
+          type: string
+        reported_to_senate:
+          type: string
+          format: date
+        nomination_resolution:
+          type: string
