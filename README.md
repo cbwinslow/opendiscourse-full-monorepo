@@ -6,6 +6,8 @@ Welcome to the OpenDiscourse project - a comprehensive platform for collecting, 
 
 OpenDiscourse is an ambitious initiative to aggregate legislative data from multiple government sources and provide sophisticated analysis capabilities through AI/ML techniques. The project focuses on US federal and state government data, with a particular emphasis on legislative activities, voting records, and political discourse.
 
+**Repository Note:** This is the consolidated monorepo version of the OpenDiscourse project, integrating all components into a single repository at [https://github.com/cbwinslow/opendiscourse-full-monorepo](https://github.com/cbwinslow/opendiscourse-full-monorepo).
+
 ## 🏗️ Architecture
 
 This project follows a monorepo structure with the following key components:
