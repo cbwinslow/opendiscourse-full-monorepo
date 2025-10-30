@@ -1,0 +1,30 @@
+[Unit]
+Description=OpenDiscourse Queue Manager
+After=network.target redis.service postgresql.service
+Wants=redis.service postgresql.service
+
+[Service]
+Type=simple
+User=opendiscourse
+Group=opendiscourse
+WorkingDirectory=/opt/opendiscourse/queue-system
+Environment=PYTHONPATH=/opt/opendiscourse/queue-system
+EnvironmentFile=/opt/opendiscourse/queue-system/.env
+ExecStart=/opt/opendiscourse/venv/bin/python queue_workers.py start --workers 2
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/opendiscourse/queue-system/logs
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

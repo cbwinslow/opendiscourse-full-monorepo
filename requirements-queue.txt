@@ -1,0 +1,23 @@
+# Queue System Dependencies
+rq[redis]==1.15.1
+redis==5.2.1
+redis-cli==5.2.1
+psutil==6.1.1
+schedule==1.2.2
+gunicorn==23.0.0
+
+# Database and API Dependencies
+psycopg2-binary==2.9.10
+requests==2.32.3
+python-dotenv==1.0.1
+
+# Monitoring and Alerting
+slack-sdk==3.33.5
+smtp-emailer==0.1.0
+
+# Process Management
+supervisor==4.2.5
+
+# Logging and Monitoring
+structlog==25.1.0
+prometheus-client==0.21.1

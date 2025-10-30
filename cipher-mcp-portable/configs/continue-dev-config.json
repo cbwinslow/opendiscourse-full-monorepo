@@ -1,0 +1,19 @@
+{
+  "models": [
+    {
+      "title": "Cipher Memory MCP",
+      "provider": "mcp",
+      "model": "cipher"
+    }
+  ],
+  "mcpServers": {
+    "cipher": {
+      "command": "node",
+      "args": ["{CIPHER_BINARY_PATH}", "--mode", "mcp"],
+      "env": {
+        "MCP_SERVER_MODE": "aggregator",
+        "OPENROUTER_API_KEY": "{OPENROUTER_API_KEY}"
+      }
+    }
+  }
+}
