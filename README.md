@@ -1,0 +1,2 @@
+# opendiscourse-full-monorepo
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/41b982f349a24ce98a8614d61d48f647)](https://app.codacy.com/gh/cbwinslow/opendiscourse-full-monorepo?utm_source=github.com&utm_medium=referral&utm_content=cbwinslow/opendiscourse-full-monorepo&utm_campaign=Badge_Grade)
